@@ -68,7 +68,7 @@ def create_pipeline(
     ai_platform_training_args: Optional[Dict[Text, Text]] = None,
     ai_platform_serving_args: Optional[Dict[Text, Any]] = None,
 ) -> pipeline.Pipeline:
-  """Implements the chicago taxi pipeline with TFX."""
+  """Implements the titanic taxi pipeline with TFX."""
 
   components = []
 
@@ -81,30 +81,26 @@ def create_pipeline(
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
-  # TODO(step 5): Uncomment here to add StatisticsGen to the pipeline.
-  # components.append(statistics_gen)
+  components.append(statistics_gen)
 
   # Generates schema based on statistics files.
   schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=True)
-  # TODO(step 5): Uncomment here to add SchemaGen to the pipeline.
-  # components.append(schema_gen)
+  components.append(schema_gen)
 
   # Performs anomaly detection based on statistics and data schema.
   example_validator = ExampleValidator(  # pylint: disable=unused-variable
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
-  # TODO(step 5): Uncomment here to add ExampleValidator to the pipeline.
-  # components.append(example_validator)
+  components.append(example_validator)
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       preprocessing_fn=preprocessing_fn)
-  # TODO(step 6): Uncomment here to add Transform to the pipeline.
-  # components.append(transform)
+  components.append(transform)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer_args = {
@@ -130,7 +126,7 @@ def create_pipeline(
     })
   trainer = Trainer(**trainer_args)
   # TODO(step 6): Uncomment here to add Trainer to the pipeline.
-  # components.append(trainer)
+  components.append(trainer)
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
@@ -138,34 +134,64 @@ def create_pipeline(
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
       model_blessing=Channel(type=ModelBlessing))
-  # TODO(step 6): Uncomment here to add ResolverNode to the pipeline.
-  # components.append(model_resolver)
+  components.append(model_resolver)
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(label_key='big_tipper')],
-      slicing_specs=[tfma.SlicingSpec()],
-      metrics_specs=[
-          tfma.MetricsSpec(metrics=[
-              tfma.MetricConfig(
-                  class_name='BinaryAccuracy',
-                  threshold=tfma.MetricThreshold(
-                      value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': eval_accuracy_threshold}),
-                      change_threshold=tfma.GenericChangeThreshold(
-                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                          absolute={'value': -1e-10})))
-          ])
-      ])
+    model_specs=[
+        # Using signature 'eval' implies the use of an EvalSavedModel. To use
+        # a serving model remove the signature to defaults to 'serving_default'
+        # and add a label_key.
+        #tfma.ModelSpec(signature_name='eval')
+        tfma.ModelSpec(signature_name='serving_default',
+                       label_key=_LABEL_KEY)
+    ],
+    metrics_specs=[
+        model_specs=[tfma.ModelSpec(label_key='Survived')],
+        tfma.MetricsSpec(
+            # The metrics added here are in addition to those saved with the
+            # model (assuming either a keras model or EvalSavedModel is used).
+            # Any metrics added into the saved model (for example using
+            # model.compile(..., metrics=[...]), etc) will be computed
+            # automatically.
+            metrics=[
+                tfma.MetricConfig(class_name='ExampleCount')
+            ],
+            # To add validation thresholds for metrics saved with the model,
+            # add them keyed by metric name to the thresholds map.
+            thresholds = {
+                'accuracy': tfma.MetricThreshold(
+                    value_threshold=tfma.GenericValueThreshold(
+                        lower_bound={'value': eval_accuracy_threshold}),
+                    change_threshold=tfma.GenericChangeThreshold(
+                       direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                       absolute={'value': -1e-10}))
+            }
+        )
+    ],
+    slicing_specs=[
+        # An empty slice spec means the overall slice, i.e. the whole dataset.
+        tfma.SlicingSpec(),
+        # Data can be sliced along a feature column. In this case, data is
+        # sliced along feature column Sex.
+        tfma.SlicingSpec(feature_keys=['Sex']),
+        tfma.SlicingSpec(feature_keys=['Age']),
+        tfma.SlicingSpec(feature_keys=['Age_xf']),
+        tfma.SlicingSpec(feature_keys=['Fare']),
+        tfma.SlicingSpec(feature_keys=['Parch']),
+        tfma.SlicingSpec(feature_keys=['Parch_xf']),
+        tfma.SlicingSpec(feature_keys=['SibSp']),
+        tfma.SlicingSpec(feature_keys=['SibSp_xf']),
+        
+    ])
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
       # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
-  # TODO(step 6): Uncomment here to add Evaluator to the pipeline.
-  # components.append(evaluator)
+  components.append(evaluator)
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -190,8 +216,7 @@ def create_pipeline(
         },
     })
   pusher = Pusher(**pusher_args)  # pylint: disable=unused-variable
-  # TODO(step 6): Uncomment here to add Pusher to the pipeline.
-  # components.append(pusher)
+  components.append(pusher)
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
