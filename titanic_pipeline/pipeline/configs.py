@@ -18,11 +18,15 @@ This file defines environments for a TFX titanic pipeline.
 """
 
 import os  # pylint: disable=unused-import
+from pathlib import Path
 
 # TODO(b/149347293): Move more TFX CLI flags into python configuration.
 
 # Pipeline name will be used to identify this pipeline.
 PIPELINE_NAME = 'titanic_pipeline'
+
+HOME = Path.home()
+OUTPUT_DIR = os.path.join(HOME, 'tfx_output')
 
 # GCP related configs.
 

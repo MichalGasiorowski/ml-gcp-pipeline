@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from pathlib import Path
 from absl import logging
 
 from pipeline import configs
@@ -32,7 +33,13 @@ from tfx.proto import trainer_pb2
 # NOTE: It is recommended to have a separated OUTPUT_DIR which is *outside* of
 #       the source code structure. Please change OUTPUT_DIR to other location
 #       where we can store outputs of the pipeline.
-OUTPUT_DIR = '.'
+
+HOME = Path.home()
+OUTPUT_DIR = os.path.join(HOME, 'tfx_output')
+
+#if not os.path.exists(OUTPUT_DIR):
+#    os.makedirs(OUTPUT_DIR, exist_ok=True)
+#OUTPUT_DIR = ''
 
 # TFX produces two types of outputs, files and metadata.
 # - Files will be created under PIPELINE_ROOT directory.
@@ -53,7 +60,7 @@ SERVING_MODEL_DIR = os.path.join(PIPELINE_ROOT, 'serving_model')
 #       Kubeflow), you can use a path starting "gs://YOUR_BUCKET_NAME/path" for
 #       DATA_PATH. For example,
 #       DATA_PATH = 'gs://bucket/chicago_taxi_trips/csv/'.
-DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'train')
 
 
 def run():
