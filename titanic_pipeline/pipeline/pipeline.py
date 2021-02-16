@@ -23,6 +23,8 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text
 
+from . import configs
+
 import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -145,10 +147,9 @@ def create_pipeline(
         # and add a label_key.
         #tfma.ModelSpec(signature_name='eval')
         tfma.ModelSpec(signature_name='serving_default',
-                       label_key=_LABEL_KEY)
+                       label_key=configs.LABEL_KEY)
     ],
     metrics_specs=[
-        model_specs=[tfma.ModelSpec(label_key='Survived')],
         tfma.MetricsSpec(
             # The metrics added here are in addition to those saved with the
             # model (assuming either a keras model or EvalSavedModel is used).
@@ -182,8 +183,7 @@ def create_pipeline(
         tfma.SlicingSpec(feature_keys=['Parch']),
         tfma.SlicingSpec(feature_keys=['Parch_xf']),
         tfma.SlicingSpec(feature_keys=['SibSp']),
-        tfma.SlicingSpec(feature_keys=['SibSp_xf']),
-        
+        tfma.SlicingSpec(feature_keys=['SibSp_xf'])
     ])
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],

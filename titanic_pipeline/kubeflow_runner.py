@@ -50,7 +50,7 @@ SERVING_MODEL_DIR = os.path.join(PIPELINE_ROOT, 'serving_model')
 # dependency currently, so this means CsvExampleGen cannot be used with Dataflow
 # (step 8 in the template notebook).
 
-DATA_PATH = 'gs://{}/tfx-template/data/taxi/'.format(configs.GCS_BUCKET_NAME)
+DATA_PATH = 'gs://{}/tfx-template/data/titanic/'.format(configs.GCS_BUCKET_NAME)
 
 
 def run():

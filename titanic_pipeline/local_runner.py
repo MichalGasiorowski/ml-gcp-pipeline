@@ -62,6 +62,9 @@ SERVING_MODEL_DIR = os.path.join(PIPELINE_ROOT, 'serving_model')
 #       DATA_PATH = 'gs://bucket/chicago_taxi_trips/csv/'.
 DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'train')
 
+for directory in (PIPELINE_ROOT, METADATA_PATH, SERVING_MODEL_DIR, DATA_PATH, OUTPUT_DIR):
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
 
 def run():
   """Define a local pipeline."""

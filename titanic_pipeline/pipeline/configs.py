@@ -20,6 +20,8 @@ This file defines environments for a TFX titanic pipeline.
 import os  # pylint: disable=unused-import
 from pathlib import Path
 
+LABEL_KEY = 'Survived'
+
 # TODO(b/149347293): Move more TFX CLI flags into python configuration.
 
 # Pipeline name will be used to identify this pipeline.
