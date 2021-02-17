@@ -21,6 +21,7 @@ parameters defined in constants.py.
 from __future__ import division
 from __future__ import print_function
 
+import os
 from absl import logging
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -82,7 +83,7 @@ def _build_keras_model(hidden_units, learning_rate):
     A keras Model.
   """
   real_keys =  features.DENSE_FLOAT_FEATURE_KEYS
-  sparse_keys = _VOCAB_FEATURE_KEYS + _BUCKET_FEATURE_KEYS + _CATEGORICAL_FEATURE_KEYS
+  sparse_keys = features.VOCAB_FEATURE_KEYS + features.BUCKET_FEATURE_KEYS + features.CATEGORICAL_FEATURE_KEYS
 
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
@@ -202,10 +203,10 @@ def run_fn(fn_args):
         learning_rate=constants.LEARNING_RATE)
 
   # Write logs to path
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=fn_args.model_run_dir, update_freq='batch')
-  early_stopping_callback = tf.keras.callbacks.EarlyStopping(
-      monitor='val_loss', patience=10)
+  log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+  #tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=fn_args.model_run_dir, update_freq='batch')
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, update_freq='batch')
+  early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
   model.fit(
       train_dataset,

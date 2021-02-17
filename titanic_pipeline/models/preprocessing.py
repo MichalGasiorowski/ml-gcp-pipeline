@@ -20,6 +20,7 @@ This file defines a template for TFX Transform component.
 from __future__ import division
 from __future__ import print_function
 
+import absl
 import tensorflow as tf
 import tensorflow_transform as tft
 
