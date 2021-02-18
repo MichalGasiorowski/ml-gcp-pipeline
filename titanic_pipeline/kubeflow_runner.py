@@ -87,8 +87,11 @@ def run():
           run_fn=configs.RUN_FN,
           train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
           eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          tuner_train_args=trainer_pb2.TrainArgs(num_steps=configs.TUNER_TRAIN_NUM_STEPS),
+          tuner_eval_args=trainer_pb2.EvalArgs(num_steps=configs.TUNER_EVAL_NUM_STEPS),
           eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
           serving_model_dir=SERVING_MODEL_DIR,
+          train_ratio_percent=0.8
           # TODO(step 7): (Optional) Uncomment below to use provide GCP related
           #               config for BigQuery with Beam DirectRunner.
           # beam_pipeline_args=configs

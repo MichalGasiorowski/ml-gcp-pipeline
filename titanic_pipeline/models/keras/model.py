@@ -23,12 +23,15 @@ from __future__ import print_function
 
 import os
 from absl import logging
+import absl
 import tensorflow as tf
 import tensorflow_transform as tft
 
 from models import features
 from models.keras import constants
 from tfx_bsl.tfxio import dataset_options
+
+import kerastuner
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
@@ -71,8 +74,17 @@ def _input_fn(file_pattern, data_accessor, tf_transform_output, batch_size=200):
           label_key=features.transformed_name(features.LABEL_KEY)),
       tf_transform_output.transformed_metadata.schema)
 
+def _get_hyperparameters() -> kerastuner.HyperParameters:
+  """Returns hyperparameters for building Keras model."""
+  hp = kerastuner.HyperParameters()
+  # Defines search space.
+  hp.Choice('learning_rate', [1e-2, 3e-3, 1e-3], default=1e-3)
+  hp.Choice('dnn_hidden_units', [[16, 8], [32, 16], [16]], default=[16, 8])
+  #hp.Float('dropout_rate', 0.1, 0.5, default=0.2)
+  return hp
 
-def _build_keras_model(hidden_units, learning_rate):
+#def _build_keras_model(hidden_units, learning_rate):
+def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying taxi data.
 
   Args:
@@ -116,6 +128,9 @@ def _build_keras_model(hidden_units, learning_rate):
       tf.feature_column.indicator_column(categorical_column)
       for categorical_column in categorical_columns
   ]
+
+  learning_rate = float(hparams.get('learning_rate'))
+  hidden_units= hparams.get('dnn_hidden_units')
 
   model = _wide_and_deep_classifier(
       # TODO(b/140320729) Replace with premade wide_and_deep keras model
@@ -189,6 +204,15 @@ def run_fn(fn_args):
     fn_args: Holds args used to train the model as name/value pairs.
   """
 
+  if fn_args.hyperparameters:
+    hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
+  else:
+    # This is a shown case when hyperparameters is decided and Tuner is removed
+    # from the pipeline. User can also inline the hyperparameters directly in
+    # _build_keras_model.
+    hparams = _get_hyperparameters()
+  absl.logging.info('HyperParameters for training: %s' % hparams.get_config())
+
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
   train_dataset = _input_fn(fn_args.train_files, fn_args.data_accessor,
@@ -225,3 +249,56 @@ def run_fn(fn_args):
                                             name='examples')),
   }
   model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+
+
+# TFX Tuner will call this function.
+def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
+  """Build the tuner using the KerasTuner API.
+  Args:
+    fn_args: Holds args as name/value pairs.
+      - working_dir: working dir for tuning.
+      - train_files: List of file paths containing training tf.Example data.
+      - eval_files: List of file paths containing eval tf.Example data.
+      - train_steps: number of train steps.
+      - eval_steps: number of eval steps.
+      - schema_path: optional schema of the input data.
+      - transform_graph_path: optional transform graph produced by TFT.
+  Returns:
+    A namedtuple contains the following:
+      - tuner: A BaseTuner that will be used for tuning.
+      - fit_kwargs: Args to pass to tuner's run_trial function for fitting the
+                    model , e.g., the training and validation dataset. Required
+                    args depend on the above tuner's implementation.
+  """
+  # RandomSearch is a subclass of kerastuner.Tuner which inherits from
+  # BaseTuner.
+  tuner = kerastuner.RandomSearch(
+      _build_keras_model,
+      max_trials=10,
+      hyperparameters=_get_hyperparameters(),
+      allow_new_entries=False,
+      objective=kerastuner.Objective('val_accuracy', 'max'),
+      directory=fn_args.working_dir,
+      project_name='titanic_tuning')
+  
+  transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
+
+  train_dataset = _input_fn(
+      fn_args.train_files,
+      fn_args.data_accessor,
+      transform_graph,
+      batch_size=constants.TRAIN_BATCH_SIZE)
+  eval_dataset = _input_fn(
+      fn_args.eval_files,
+      fn_args.data_accessor,
+      transform_graph,
+      batch_size=constants.EVAL_BATCH_SIZE)
+
+  return TunerFnResult(
+      tuner=tuner,
+      fit_kwargs={
+          'x': train_dataset,
+          'validation_data': eval_dataset,
+          'steps_per_epoch': fn_args.train_steps,
+          'validation_steps': fn_args.eval_steps
+      })

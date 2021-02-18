@@ -62,20 +62,35 @@ def create_pipeline(
     run_fn: Text,
     train_args: trainer_pb2.TrainArgs,
     eval_args: trainer_pb2.EvalArgs,
+    tuner_train_args: trainer_pb2.TrainArgs,
+    tuner_eval_args: trainer_pb2.EvalArgs, 
     eval_accuracy_threshold: float,
     serving_model_dir: Text,
     metadata_connection_config: Optional[
         metadata_store_pb2.ConnectionConfig] = None,
     beam_pipeline_args: Optional[List[Text]] = None,
     ai_platform_training_args: Optional[Dict[Text, Text]] = None,
+    ai_platform_tuner_args: Optional[Dict[Text, Text]] = None,
     ai_platform_serving_args: Optional[Dict[Text, Any]] = None,
+    train_ratio_percent: float=0.8,
+    enable_tuning: bool=True,
 ) -> pipeline.Pipeline:
   """Implements the titanic taxi pipeline with TFX."""
+  
+  train_ratio = int(train_ratio_percent*100)
+  eval_ratio  = 100-train_ratio
 
   components = []
 
+  output = example_gen_pb2.Output(
+             split_config=example_gen_pb2.SplitConfig(splits=[
+                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=train_ratio),
+                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=eval_ratio)
+             ]))
+
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=external_input(data_path))
+  #example_gen = CsvExampleGen(input=external_input(data_path))
+  example_gen = CsvExampleGen(input=examples, output_config=output)
   # TODO(step 7): (Optional) Uncomment here to use BigQuery as a data source.
   # example_gen = big_query_example_gen_component.BigQueryExampleGen(
   #     query=query)
@@ -104,7 +119,33 @@ def create_pipeline(
       preprocessing_fn=preprocessing_fn)
   components.append(transform)
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  tuner_args = {
+      'tuner_fn': tuner_fn,
+      'transformed_examples': transform.outputs['transformed_examples'],
+      'schema': schema_gen.outputs['schema'],
+      'transform_graph': transform.outputs['transform_graph'],
+      'train_args': tuner_train_args,
+      'eval_args': tuner_eval_args,
+      'custom_executor_spec':
+          executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
+  }
+    
+  if ai_platform_tuner_args is not None:
+    tuner_args.update({
+        'custom_executor_spec':
+            executor_spec.ExecutorClassSpec(
+                ai_platform_trainer_executor.GenericExecutor
+            ),
+        'custom_config': {
+            ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                ai_platform_tuner_args,
+        }
+    })
+    
+  if enable_tuning:
+    # Hyperparameter tuning based on the tuner_fn .
+    tuner = Tuner(**tuner_args)
+
   trainer_args = {
       'run_fn': run_fn,
       'transformed_examples': transform.outputs['transformed_examples'],
@@ -112,9 +153,28 @@ def create_pipeline(
       'transform_graph': transform.outputs['transform_graph'],
       'train_args': train_args,
       'eval_args': eval_args,
+      # If Tuner is in the pipeline, Trainer can take Tuner's output
+      # best_hyperparameters artifact as input and utilize it in the user module
+      # code.
+      #
+      # If there isn't Tuner in the pipeline, either use ImporterNode to import
+      # a previous Tuner's output to feed to Trainer, or directly use the tuned
+      # hyperparameters in user module code and set hyperparameters to None
+      # here.
+      #
+      # Example of ImporterNode,
+      #   hparams_importer = ImporterNode(
+      #     instance_name='import_hparams',
+      #     source_uri='path/to/best_hyperparameters.txt',
+      #     artifact_type=HyperParameters)
+      #   ...
+      #   hyperparameters = hparams_importer.outputs['result'],
+      'hyperparameters': (tuner.outputs['best_hyperparameters']
+                       if enable_tuning else None), 
       'custom_executor_spec':
           executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
   }
+
   if ai_platform_training_args is not None:
     trainer_args.update({
         'custom_executor_spec':
@@ -126,10 +186,16 @@ def create_pipeline(
                 ai_platform_training_args,
         }
     })
+  
+    
   trainer = Trainer(**trainer_args)
   # TODO(step 6): Uncomment here to add Trainer to the pipeline.
   components.append(trainer)
-
+  
+  
+  
+  # Uses user-provided Python function that implements a model using TF-Learn.
+  
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
       instance_name='latest_blessed_model_resolver',
@@ -217,6 +283,9 @@ def create_pipeline(
     })
   pusher = Pusher(**pusher_args)  # pylint: disable=unused-variable
   components.append(pusher)
+    
+  if enable_tuning:
+    components.append(tuner)
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,

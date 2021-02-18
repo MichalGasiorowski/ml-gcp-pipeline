@@ -61,6 +61,9 @@ RUN_FN = 'models.keras.model.run_fn'
 TRAIN_NUM_STEPS = 1000
 EVAL_NUM_STEPS = 150
 
+TUNER_TRAIN_NUM_STEPS = 500
+TUNER_EVAL_NUM_STEPS = 100
+
 # Change this value according to your use cases.
 EVAL_ACCURACY_THRESHOLD = 0.6
 
@@ -141,11 +144,28 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #     # a public container image matching the installed version of TFX.
 #     # TODO(step 9): (Optional) Set your container name below.
 #     'masterConfig': {
-#       'imageUri': 'gcr.io/' + GOOGLE_CLOUD_PROJECT + '/tfx-pipeline'
+#       'imageUri': 'gcr.io/' + GOOGLE_CLOUD_PROJECT + '/titanic-pipeline'
 #     },
 #     # Note that if you do specify a custom container, ensure the entrypoint
 #     # calls into TFX's run_executor script (tfx/scripts/run_executor.py)
 # }
+
+
+# GCP_AI_PLATFORM_TUNER_ARGS = {
+#     'project': GOOGLE_CLOUD_PROJECT,
+#     'region': GOOGLE_CLOUD_REGION,
+#     # Starting from TFX 0.14, training on AI Platform uses custom containers:
+#     # https://cloud.google.com/ml-engine/docs/containers-overview
+#     # You can specify a custom container here. If not specified, TFX will use
+#     # a public container image matching the installed version of TFX.
+#     # TODO(step 9): (Optional) Set your container name below.
+#     'masterConfig': {
+#       'imageUri': 'gcr.io/' + GOOGLE_CLOUD_PROJECT + '/titanic-pipeline'
+#     },
+#     # Note that if you do specify a custom container, ensure the entrypoint
+#     # calls into TFX's run_executor script (tfx/scripts/run_executor.py)
+# }
+
 
 # A dict which contains the serving job parameters to be passed to Google
 # Cloud AI Platform. For the full set of parameters supported by Google Cloud AI
