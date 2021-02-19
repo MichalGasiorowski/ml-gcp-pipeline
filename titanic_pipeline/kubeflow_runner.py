@@ -85,6 +85,7 @@ def run():
           # query=configs.BIG_QUERY_QUERY,
           preprocessing_fn=configs.PREPROCESSING_FN,
           run_fn=configs.RUN_FN,
+          tuner_fn=configs.TUNER_FN,
           train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
           eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
           tuner_train_args=trainer_pb2.TrainArgs(num_steps=configs.TUNER_TRAIN_NUM_STEPS),

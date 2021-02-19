@@ -32,6 +32,11 @@ from models.keras import constants
 from tfx_bsl.tfxio import dataset_options
 
 import kerastuner
+from tfx.components.trainer.executor import TrainerFnArgs
+from tfx.components.trainer.fn_args_utils import FnArgs
+from tfx.components.tuner.component import TunerFnResult
+
+import ast 
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
@@ -78,13 +83,14 @@ def _get_hyperparameters() -> kerastuner.HyperParameters:
   """Returns hyperparameters for building Keras model."""
   hp = kerastuner.HyperParameters()
   # Defines search space.
-  hp.Choice('learning_rate', [1e-2, 3e-3, 1e-3], default=1e-3)
-  hp.Choice('dnn_hidden_units', [[16, 8], [32, 16], [16]], default=[16, 8])
+  hp.Choice('learning_rate', [1e-2, 3e-3, 1e-3], default=constants.LEARNING_RATE)
+  hp.Choice('hidden_units', ["[16, 8]", "[32, 16]", "[16]"], default=constants.HIDDEN_UNITS)
   #hp.Float('dropout_rate', 0.1, 0.5, default=0.2)
   return hp
 
+
 #def _build_keras_model(hidden_units, learning_rate):
-def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
+def _build_keras_model(hparams: kerastuner.HyperParameters = None) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying taxi data.
 
   Args:
@@ -130,18 +136,20 @@ def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
   ]
 
   learning_rate = float(hparams.get('learning_rate'))
-  hidden_units= hparams.get('dnn_hidden_units')
+  hidden_units = ast.literal_eval(hparams.get('hidden_units'))
+    
+  #hidden_units= hparams.get('hidden_units')
 
   model = _wide_and_deep_classifier(
       # TODO(b/140320729) Replace with premade wide_and_deep keras model
       wide_columns=indicator_column,
       deep_columns=real_valued_columns,
-      dnn_hidden_units=hidden_units,
+      hidden_units=hidden_units,
       learning_rate=learning_rate)
   return model
 
 
-def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units,
+def _wide_and_deep_classifier(wide_columns, deep_columns, hidden_units,
                               learning_rate):
   """Build a simple keras wide and deep model.
 
@@ -178,7 +186,7 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units,
   # TODO(b/161952382): Replace with Keras premade models and
   # Keras preprocessing layers.
   deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
-  for numnodes in dnn_hidden_units:
+  for numnodes in hidden_units:
     deep = tf.keras.layers.Dense(numnodes)(deep)
   wide = tf.keras.layers.DenseFeatures(wide_columns)(input_layers)
 
@@ -222,9 +230,8 @@ def run_fn(fn_args):
 
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
-    model = _build_keras_model(
-        hidden_units=constants.HIDDEN_UNITS,
-        learning_rate=constants.LEARNING_RATE)
+    model = _build_keras_model(hparams)
+    #model = _build_keras_model(hidden_units=constants.HIDDEN_UNITS, learning_rate=constants.LEARNING_RATE)
 
   # Write logs to path
   log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')

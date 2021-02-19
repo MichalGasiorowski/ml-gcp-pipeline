@@ -55,6 +55,7 @@ GCS_BUCKET_NAME = GOOGLE_CLOUD_PROJECT + '-kubeflowpipelines-default'
 
 PREPROCESSING_FN = 'models.preprocessing.preprocessing_fn'
 RUN_FN = 'models.keras.model.run_fn'
+TUNER_FN = 'models.keras.model.tuner_fn'
 # NOTE: Uncomment below to use an estimator based model.
 # RUN_FN = 'models.estimator.model.run_fn'
 

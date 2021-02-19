@@ -24,7 +24,6 @@ from __future__ import print_function
 from typing import Any, Dict, List, Optional, Text
 
 from . import configs
-
 import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -35,6 +34,7 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.components import Tuner
 from tfx.components.trainer import executor as trainer_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
@@ -42,12 +42,14 @@ from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platfo
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component  # pylint: disable=unused-import
 from tfx.orchestration import pipeline
+from tfx.proto import example_gen_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.utils.dsl_utils import external_input
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
-from tfx.utils.dsl_utils import external_input
+
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -60,6 +62,7 @@ def create_pipeline(
     # query: Text,
     preprocessing_fn: Text,
     run_fn: Text,
+    tuner_fn: Text,
     train_args: trainer_pb2.TrainArgs,
     eval_args: trainer_pb2.EvalArgs,
     tuner_train_args: trainer_pb2.TrainArgs,
@@ -87,7 +90,7 @@ def create_pipeline(
                  example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=train_ratio),
                  example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=eval_ratio)
              ]))
-
+  examples = external_input(data_path)
   # Brings data into the pipeline or otherwise joins/converts training data.
   #example_gen = CsvExampleGen(input=external_input(data_path))
   example_gen = CsvExampleGen(input=examples, output_config=output)
@@ -121,26 +124,25 @@ def create_pipeline(
 
   tuner_args = {
       'tuner_fn': tuner_fn,
-      'transformed_examples': transform.outputs['transformed_examples'],
+      'examples': transform.outputs['transformed_examples'], # transformed_examples field is deprecated, see for example https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/component.py
       'schema': schema_gen.outputs['schema'],
       'transform_graph': transform.outputs['transform_graph'],
       'train_args': tuner_train_args,
       'eval_args': tuner_eval_args,
-      'custom_executor_spec':
-          executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
   }
-    
-  if ai_platform_tuner_args is not None:
-    tuner_args.update({
-        'custom_executor_spec':
-            executor_spec.ExecutorClassSpec(
-                ai_platform_trainer_executor.GenericExecutor
-            ),
-        'custom_config': {
-            ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                ai_platform_tuner_args,
-        }
-    })
+  
+  # see https://github.com/tensorflow/tfx/blob/master/docs/guide/tuner.md  
+  #if ai_platform_tuner_args is not None:
+  #  tuner_args.update({
+  #      'custom_executor_spec':
+  #          executor_spec.ExecutorClassSpec(
+  #              ai_platform_trainer_executor.GenericExecutor
+  #          ),
+  #      'custom_config': {
+  #          ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+  #              ai_platform_tuner_args,
+  #      }
+  #  })
     
   if enable_tuning:
     # Hyperparameter tuning based on the tuner_fn .
@@ -148,7 +150,7 @@ def create_pipeline(
 
   trainer_args = {
       'run_fn': run_fn,
-      'transformed_examples': transform.outputs['transformed_examples'],
+      'examples': transform.outputs['transformed_examples'],
       'schema': schema_gen.outputs['schema'],
       'transform_graph': transform.outputs['transform_graph'],
       'train_args': train_args,
@@ -171,8 +173,7 @@ def create_pipeline(
       #   hyperparameters = hparams_importer.outputs['result'],
       'hyperparameters': (tuner.outputs['best_hyperparameters']
                        if enable_tuning else None), 
-      'custom_executor_spec':
-          executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
+      'custom_executor_spec': executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
   }
 
   if ai_platform_training_args is not None:
@@ -191,7 +192,6 @@ def create_pipeline(
   trainer = Trainer(**trainer_args)
   # TODO(step 6): Uncomment here to add Trainer to the pipeline.
   components.append(trainer)
-  
   
   
   # Uses user-provided Python function that implements a model using TF-Learn.
