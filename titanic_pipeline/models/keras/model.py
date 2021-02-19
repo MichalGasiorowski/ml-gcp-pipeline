@@ -196,10 +196,12 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, hidden_units,
   output = tf.squeeze(output, -1)
 
   model = tf.keras.Model(input_layers, output)
+
   model.compile(
       loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(lr=learning_rate),
-      metrics=[tf.keras.metrics.BinaryAccuracy()])
+      metrics=['accuracy'])
+      #metrics=[tf.keras.metrics.BinaryAccuracy(), 'accuracy'])
   model.summary(print_fn=logging.info)
   return model
 
