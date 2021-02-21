@@ -200,7 +200,7 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, hidden_units,
   model.compile(
       loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(lr=learning_rate),
-      metrics=['accuracy'])
+      metrics=['binary_accuracy'])
       #metrics=[tf.keras.metrics.BinaryAccuracy(), 'accuracy'])
   model.summary(print_fn=logging.info)
   return model
@@ -286,10 +286,10 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       max_trials=10,
       hyperparameters=_get_hyperparameters(),
       allow_new_entries=False,
-      objective=kerastuner.Objective('val_accuracy', 'max'),
+      objective=kerastuner.Objective('val_binary_accuracy', 'max'),
       directory=fn_args.working_dir,
       project_name='titanic_tuning')
-  
+  #sparse_categorical_accuracy
   transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
 
   train_dataset = _input_fn(
