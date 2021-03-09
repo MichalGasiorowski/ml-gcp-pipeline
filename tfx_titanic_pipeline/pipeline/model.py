@@ -128,6 +128,10 @@ def _build_keras_model(hparams: kerastuner.HyperParameters,
   Returns:
     A keras Model.
   """
+
+  real_keys = features.NUMERIC_FEATURE_KEYS
+  sparse_keys = features.VOCAB_FEATURE_KEYS + features.BUCKET_FEATURE_KEYS + features.CATEGORICAL_FEATURE_KEYS
+
   # Defines deep feature columns and input layers.
   deep_columns = [
       tf.feature_column.numeric_column(
@@ -150,6 +154,23 @@ def _build_keras_model(hparams: kerastuner.HyperParameters,
       for key in features.CATEGORICAL_FEATURE_KEYS
   ]
 
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+          key,
+          num_buckets=features.VOCAB_SIZE + features.OOV_SIZE,
+          default_value=0)
+      for key in features.transformed_names(features.VOCAB_FEATURE_KEYS)
+  ]
+
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+          key,
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+          features.transformed_names(features.BUCKET_FEATURE_KEYS),
+          features.BUCKET_FEATURE_BUCKET_COUNT)
+  ]
+
   wide_columns = [
       tf.feature_column.indicator_column(categorical_column)
       for categorical_column in categorical_columns
@@ -167,14 +188,20 @@ def _build_keras_model(hparams: kerastuner.HyperParameters,
 
   wide = tf.keras.layers.DenseFeatures(wide_columns)(input_layers)
 
-  output = tf.keras.layers.Dense(features.NUM_CLASSES, activation='softmax')(
-               tf.keras.layers.concatenate([deep, wide]))
+  #output = tf.keras.layers.Dense(features.NUM_CLASSES, activation='softmax')(
+  #             tf.keras.layers.concatenate([deep, wide]))
+
+  output = tf.keras.layers.Dense(
+      1, activation='sigmoid')(
+      tf.keras.layers.concatenate([deep, wide]))
+  output = tf.squeeze(output, -1)
+
 
   model = tf.keras.Model(input_layers, output)
   model.compile(
-      loss='sparse_categorical_crossentropy',
+      loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(lr=hparams.get('learning_rate')),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+      metrics=['binary_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
   return model    

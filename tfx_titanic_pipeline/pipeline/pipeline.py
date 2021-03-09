@@ -194,7 +194,14 @@ def create_pipeline(pipeline_name: Text,
     metrics_specs=[metrics_specs],
     slicing_specs=[
         tfma.SlicingSpec(),
-        tfma.SlicingSpec(feature_keys=['Wilderness_Area'])
+        tfma.SlicingSpec(feature_keys=['Sex']),
+        tfma.SlicingSpec(feature_keys=['Age']),
+        tfma.SlicingSpec(feature_keys=['Age_xf']),
+        tfma.SlicingSpec(feature_keys=['Fare']),
+        tfma.SlicingSpec(feature_keys=['Parch']),
+        tfma.SlicingSpec(feature_keys=['Parch_xf']),
+        tfma.SlicingSpec(feature_keys=['SibSp']),
+        tfma.SlicingSpec(feature_keys=['SibSp_xf'])
     ]
   )
   
