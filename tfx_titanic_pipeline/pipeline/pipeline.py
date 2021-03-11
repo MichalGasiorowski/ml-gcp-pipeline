@@ -47,6 +47,7 @@ from tfx.proto import evaluator_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.utils.dsl_utils import external_input
 from tfx.proto import tuner_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
@@ -107,7 +108,14 @@ def create_pipeline(pipeline_name: Text,
         example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
     ]))
 
-  examplegen = CsvExampleGen(input_base=data_root_uri)
+  #examples = external_input(data_root_uri)
+  examplegen = CsvExampleGen(input_base=data_root_uri, output_config=output_config)
+
+  #example_gen = tfx.components.CsvExampleGen(
+  #    input_base=DATA_ROOT,
+  #    output_config=output_config)
+
+  #examplegen = CsvExampleGen(input_base=data_root_uri)
 
   # Computes statistics over data for visualization and example validation.
   statisticsgen = StatisticsGen(examples=examplegen.outputs.examples)
