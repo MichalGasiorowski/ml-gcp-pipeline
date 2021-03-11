@@ -201,6 +201,7 @@ def _build_keras_model(hparams: kerastuner.HyperParameters,
   model.compile(
       loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(lr=hparams.get('learning_rate')),
+      #metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
       metrics=['binary_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
@@ -233,7 +234,8 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
       region=fn_args.custom_config['ai_platform_training_args']['region'],      
       max_trials=50,
       hyperparameters=_get_hyperparameters(),
-      objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
+      #objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
+      objective=kerastuner.Objective('val_binary_accuracy', 'max'),
       directory=fn_args.working_dir)
   
   train_dataset = _input_fn(

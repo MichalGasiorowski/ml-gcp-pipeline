@@ -191,13 +191,14 @@ def create_pipeline(pipeline_name: Text,
 
   metrics_specs = tfma.MetricsSpec(
                    metrics = [
-                       tfma.MetricConfig(class_name='SparseCategoricalAccuracy',
+                       #tfma.MetricConfig(class_name='SparseCategoricalAccuracy',
+                       tfma.MetricConfig(class_name='BinaryAccuracy',
                            threshold=accuracy_threshold),
                        tfma.MetricConfig(class_name='ExampleCount')])
 
   eval_config = tfma.EvalConfig(
     model_specs=[
-        tfma.ModelSpec(label_key='Cover_Type')
+        tfma.ModelSpec(label_key='Survived')
     ],
     metrics_specs=[metrics_specs],
     slicing_specs=[
