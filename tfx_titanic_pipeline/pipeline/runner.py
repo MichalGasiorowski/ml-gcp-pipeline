@@ -70,7 +70,7 @@ if __name__ == '__main__':
     
   eval_steps = data_types.RuntimeParameter(
       name='eval-steps',
-      default=2000,
+      default=600,
       ptype=int
   )
 
