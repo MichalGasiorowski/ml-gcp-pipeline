@@ -320,6 +320,7 @@ def run_fn(fn_args: TrainerFnArgs):
 
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=LOCAL_LOG_DIR, update_freq='batch')
+  early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
 
   model.fit(
       train_dataset,
@@ -328,7 +329,7 @@ def run_fn(fn_args: TrainerFnArgs):
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps,
       verbose=2,      
-      callbacks=[tensorboard_callback])
+      callbacks=[tensorboard_callback, early_stopping_callback])
     
   signatures = {
       'serving_default':
