@@ -64,13 +64,13 @@ if __name__ == '__main__':
 
   train_steps = data_types.RuntimeParameter(
       name='train-steps',
-      default=5000,
+      default=20000,
       ptype=int
   )
     
   eval_steps = data_types.RuntimeParameter(
       name='eval-steps',
-      default=500,
+      default=2000,
       ptype=int
   )
 
