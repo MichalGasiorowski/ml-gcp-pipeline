@@ -66,6 +66,7 @@ TRAIN_MODULE_FILE='model.py'
 def create_pipeline(pipeline_name: Text, 
                       pipeline_root: Text, 
                       data_root_uri: data_types.RuntimeParameter,
+                      tuner_steps: data_types.RuntimeParameter,
                       train_steps: data_types.RuntimeParameter,
                       eval_steps: data_types.RuntimeParameter,
                       enable_tuning: bool,                    
@@ -152,7 +153,7 @@ def create_pipeline(pipeline_name: Text,
         module_file=TRAIN_MODULE_FILE,
         examples=transform.outputs.transformed_examples,
         transform_graph=transform.outputs.transform_graph,        
-        train_args={'num_steps': train_steps},
+        train_args={'num_steps': tuner_steps},
         eval_args={'num_steps': eval_steps},
         tune_args=tuner_pb2.TuneArgs(
             # num_parallel_trials=3 means that 3 search loops are running in parallel.

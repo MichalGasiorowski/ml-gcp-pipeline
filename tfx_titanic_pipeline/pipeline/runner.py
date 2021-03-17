@@ -64,13 +64,19 @@ if __name__ == '__main__':
 
   train_steps = data_types.RuntimeParameter(
       name='train-steps',
-      default=20000,
+      default=30000,
+      ptype=int
+  )
+    
+  tuner_steps = data_types.RuntimeParameter(
+      name='tuner-steps',
+      default=2000,
       ptype=int
   )
     
   eval_steps = data_types.RuntimeParameter(
       name='eval-steps',
-      default=600,
+      default=1000,
       ptype=int
   )
 
@@ -94,6 +100,7 @@ if __name__ == '__main__':
         pipeline_name=Config.PIPELINE_NAME,
         pipeline_root=pipeline_root,
         data_root_uri=data_root_uri,
+        tuner_steps=tuner_steps,
         train_steps=train_steps,
         eval_steps=eval_steps,
         enable_tuning=strtobool(Config.ENABLE_TUNING),          
