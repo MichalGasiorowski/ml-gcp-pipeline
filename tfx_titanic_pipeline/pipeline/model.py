@@ -266,8 +266,7 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
       fit_kwargs={
           'x': train_dataset,
           'validation_data': eval_dataset,
-          'epochs': EPOCHS
-          'steps_per_epoch': fn_args.train_steps / EPOCHS,
+          'steps_per_epoch': fn_args.train_steps,
           'validation_steps': fn_args.eval_steps
       })
 
@@ -332,7 +331,7 @@ def run_fn(fn_args: TrainerFnArgs):
 
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=LOCAL_LOG_DIR, update_freq='batch')
-  early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+  early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
 
   model.fit(
       train_dataset,
