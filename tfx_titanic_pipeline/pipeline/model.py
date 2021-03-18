@@ -243,7 +243,6 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
       region=fn_args.custom_config['ai_platform_training_args']['region'],      
       max_trials=30,
       hyperparameters=_get_hyperparameters(),
-      #objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
       objective=kerastuner.Objective('val_binary_accuracy', 'max'),
       #objective=kerastuner.Objective('auc', 'min'),
       directory=fn_args.working_dir)
