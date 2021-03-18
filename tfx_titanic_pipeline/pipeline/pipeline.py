@@ -54,6 +54,7 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.types.standard_artifacts import InfraBlessing
 from tfx.types.standard_artifacts import Schema
+from tfx.types.standard_artifacts import HyperParameters
 
 import features
 
@@ -164,6 +165,13 @@ def create_pipeline(pipeline_name: Text,
             ai_platform_trainer_executor.TRAINING_ARGS_KEY: ai_platform_training_args
         })  
 
+  hparams_importer = ImporterNode(
+      instance_name='import_hparams',
+      source_uri='hyperparameters',
+      artifact_type=HyperParameters)
+  
+  #hyperparameters = (tuner.outputs.best_hyperparameters if enable_tuning else hparams_importer.outputs['result']),
+    
   # Trains the model using a user provided trainer function.
   trainer = Trainer(
       custom_executor_spec=executor_spec.ExecutorClassSpec(ai_platform_trainer_executor.GenericExecutor),
@@ -171,7 +179,7 @@ def create_pipeline(pipeline_name: Text,
       transformed_examples=transform.outputs.transformed_examples,
       schema=import_schema.outputs.result,
       transform_graph=transform.outputs.transform_graph,
-      hyperparameters=(tuner.outputs.best_hyperparameters if enable_tuning else None),      
+      hyperparameters=(tuner.outputs.best_hyperparameters if enable_tuning else hparams_importer.outputs['result']),      
       train_args={'num_steps': train_steps},
       eval_args={'num_steps': eval_steps},
       custom_config={'ai_platform_training_args': ai_platform_training_args})
@@ -184,6 +192,13 @@ def create_pipeline(pipeline_name: Text,
       model_blessing=Channel(type=ModelBlessing))
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
+  #accuracy_threshold = tfma.MetricThreshold(
+  #              value_threshold=tfma.GenericValueThreshold(
+  #                  lower_bound={'value': 0.5},
+  #                  upper_bound={'value': 0.99}),
+  #              )
+
+  # Uses TFMA to compute a evaluation statistics over features of a model.
   accuracy_threshold = tfma.MetricThreshold(
                 value_threshold=tfma.GenericValueThreshold(
                     lower_bound={'value': 0.5},
@@ -192,7 +207,6 @@ def create_pipeline(pipeline_name: Text,
 
   metrics_specs = tfma.MetricsSpec(
                    metrics = [
-                       #tfma.MetricConfig(class_name='SparseCategoricalAccuracy',
                        tfma.MetricConfig(class_name='BinaryAccuracy',
                            threshold=accuracy_threshold),
                        tfma.MetricConfig(class_name='ExampleCount')])
@@ -203,17 +217,11 @@ def create_pipeline(pipeline_name: Text,
     ],
     metrics_specs=[metrics_specs],
     slicing_specs=[
-        tfma.SlicingSpec(),
-        tfma.SlicingSpec(feature_keys=['Sex']),
-        tfma.SlicingSpec(feature_keys=['Age']),
-        tfma.SlicingSpec(feature_keys=['Age_xf']),
-        tfma.SlicingSpec(feature_keys=['Fare']),
-        tfma.SlicingSpec(feature_keys=['Parch']),
-        tfma.SlicingSpec(feature_keys=['Parch_xf']),
-        tfma.SlicingSpec(feature_keys=['SibSp']),
-        tfma.SlicingSpec(feature_keys=['SibSp_xf'])
+        tfma.SlicingSpec()
+        #,tfma.SlicingSpec(feature_keys=['Sex'])
     ]
   )
+
   
   evaluator = Evaluator(
       examples=examplegen.outputs.examples,
@@ -273,6 +281,8 @@ def create_pipeline(pipeline_name: Text,
 
   if enable_tuning:
     components.append(tuner)
+  else:
+    components.append(hparams_importer)
 
 
   return pipeline.Pipeline(

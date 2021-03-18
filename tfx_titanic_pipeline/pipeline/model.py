@@ -202,13 +202,12 @@ def _build_keras_model(hparams: kerastuner.HyperParameters,
       loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(lr=hparams.get('learning_rate')),
       #metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-      #metrics=['binary_accuracy'])
       metrics=[
                       tf.keras.metrics.TruePositives(name='tp'),
                       tf.keras.metrics.FalsePositives(name='fp'),
                       tf.keras.metrics.TrueNegatives(name='tn'),
                       tf.keras.metrics.FalseNegatives(name='fn'),
-                      tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+                      tf.keras.metrics.BinaryAccuracy(name='binary_accuracy'),
                       tf.keras.metrics.Precision(name='precision'),
                       tf.keras.metrics.Recall(name='recall'),
                       tf.keras.metrics.AUC(name='auc'),
@@ -245,7 +244,7 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
       max_trials=30,
       hyperparameters=_get_hyperparameters(),
       #objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
-      objective=kerastuner.Objective('val_accuracy', 'max'),
+      objective=kerastuner.Objective('val_binary_accuracy', 'max'),
       #objective=kerastuner.Objective('auc', 'min'),
       directory=fn_args.working_dir)
   
