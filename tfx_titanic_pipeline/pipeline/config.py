@@ -31,7 +31,8 @@ class Config:
     RUNTIME_VERSION=os.getenv("RUNTIME_VERSION", "2.3")
     PYTHON_VERSION=os.getenv("PYTHON_VERSION", "3.7")    
     USE_KFP_SA=os.getenv("USE_KFP_SA", "False")
-    ENABLE_TUNING=os.getenv("ENABLE_TUNING", "True")    
+    ENABLE_TUNING=os.getenv("ENABLE_TUNING", "True")
+    ENABLE_CACHE = os.getenv("ENABLE_CACHE", "False")
     
     
     

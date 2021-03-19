@@ -19,7 +19,7 @@ import tensorflow_model_analysis as tfma
 
 from absl import app
 from absl import flags
-from typing import Optional, Dict, List, Text
+from typing import Any, Dict, List, Optional, Text
 
 from tfx.dsl.components.base import executor_spec
 from tfx.components import Evaluator
@@ -56,6 +56,9 @@ from tfx.types.standard_artifacts import InfraBlessing
 from tfx.types.standard_artifacts import Schema
 from tfx.types.standard_artifacts import HyperParameters
 
+from ml_metadata.proto import metadata_store_pb2
+
+
 import features
 
 
@@ -70,11 +73,14 @@ def create_pipeline(pipeline_name: Text,
                       tuner_steps: data_types.RuntimeParameter,
                       train_steps: data_types.RuntimeParameter,
                       eval_steps: data_types.RuntimeParameter,
-                      enable_tuning: bool,                    
-                      ai_platform_training_args: Dict[Text, Text],
-                      ai_platform_serving_args: Dict[Text, Text],                    
-                      beam_pipeline_args: List[Text],
-                      enable_cache: Optional[bool] = False) -> pipeline.Pipeline:
+                      enable_tuning: bool = True,
+                      ai_platform_training_args: Optional[Dict[Text, Text]] = None,
+                      ai_platform_tuner_args: Optional[Dict[Text, Text]] = None,
+                      ai_platform_serving_args: Optional[Dict[Text, Any]] = None,
+                      beam_pipeline_args: Optional[List[Text]] = None,
+                      enable_cache: Optional[bool] = True,
+                      metadata_connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None
+                    ) -> pipeline.Pipeline:
   """Trains and deploys the Keras Covertype Classifier with TFX and Kubeflow Pipeline on Google Cloud.
   Args:
     pipeline_name: name of the TFX pipeline being created.
@@ -290,6 +296,7 @@ def create_pipeline(pipeline_name: Text,
       pipeline_root=pipeline_root,
       components=components,
       enable_cache=enable_cache,
+      metadata_connection_config=metadata_connection_config,
       beam_pipeline_args=beam_pipeline_args
   )
 

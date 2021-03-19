@@ -19,11 +19,16 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from pathlib import Path
+import time
 from absl import logging
+from tfx.orchestration import data_types
 
 from config import Config
 from pipeline import create_pipeline
+
+from typing import Optional, Dict, List, Text
+from distutils.util import strtobool
+
 
 from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
@@ -58,33 +63,66 @@ ARTIFACT_STORE = os.path.join(os.sep, 'home', 'jupyter', 'artifact-store')
 SERVING_MODEL_DIR=os.path.join(os.sep, 'home', 'jupyter', 'serving_model')
 DATA_ROOT_URI = 'gs://cloud-training-281409-kubeflowpipelines-default/tfx-template/data/titanic'
         
-PIPELINE_NAME = configs.PIPELINE_NAME
+PIPELINE_NAME = Config.PIPELINE_NAME
 PIPELINE_ROOT = os.path.join(ARTIFACT_STORE, PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
 os.makedirs(PIPELINE_ROOT, exist_ok=True)    
 
-METADATA_PATH = os.path.join(PIPELINE_ROOT, 'tfx_metadata', configs.PIPELINE_NAME,
-                             'metadata.db')
+METADATA_PATH = os.path.join(PIPELINE_ROOT, 'tfx_metadata', PIPELINE_NAME, 'metadata.db')
         
 def run():
   """Define a local pipeline."""
 
+  beam_tmp_folder = '{}/beam/tmp'.format(Config.ARTIFACT_STORE_URI)
+  beam_pipeline_args = [
+      '--runner=DataflowRunner',
+      '--experiments=shuffle_mode=auto',
+      '--project=' + Config.PROJECT_ID,
+      '--temp_location=' + beam_tmp_folder,
+      '--region=' + Config.GCP_REGION,
+  ]
+
+  # Set the default values for the pipeline runtime parameters
+  data_root_uri = data_types.RuntimeParameter(
+      name='data-root-uri',
+      default=Config.DATA_ROOT_URI,
+      ptype=Text
+  )
+
+  train_steps = data_types.RuntimeParameter(
+      name='train-steps',
+      default=30000,
+      ptype=int
+  )
+
+  tuner_steps = data_types.RuntimeParameter(
+      name='tuner-steps',
+      default=2000,
+      ptype=int
+  )
+
+  eval_steps = data_types.RuntimeParameter(
+      name='eval-steps',
+      default=1000,
+      ptype=int
+  )
+
+  enable_cache = data_types.RuntimeParameter(
+      name='enable-cache',
+      default=Config.ENABLE_CACHE,
+      ptype=bool
+  )
+
   LocalDagRunner().run(
-      pipeline.create_pipeline(
-          pipeline_name=configs.PIPELINE_NAME,
+      create_pipeline(
+          pipeline_name=PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,
           data_path=DATA_ROOT_URI,
-          # TODO(step 7): (Optional) Uncomment here to use BigQueryExampleGen.
-          # query=configs.BIG_QUERY_QUERY,
-          preprocessing_fn=configs.PREPROCESSING_FN,
-          run_fn=configs.RUN_FN,
-          train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
-          eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
-          eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
+          tuner_steps=tuner_steps,
+          train_steps=train_steps,
+          eval_steps=eval_steps,
+          enable_tuning=strtobool(Config.ENABLE_TUNING),
+          enable_cache=enable_cache,
           serving_model_dir=SERVING_MODEL_DIR,
-          # TODO(step 7): (Optional) Uncomment here to use provide GCP related
-          #               config for BigQuery with Beam DirectRunner.
-          # beam_pipeline_args=configs.
-          # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
           metadata_connection_config=metadata.sqlite_metadata_connection_config(
               METADATA_PATH)))
 
