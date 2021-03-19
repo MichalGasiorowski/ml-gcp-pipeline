@@ -130,3 +130,5 @@ dmypy.json
 
 PyCharm project files
 *.iml
+.DS_Store
+.idea
