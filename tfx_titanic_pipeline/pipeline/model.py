@@ -107,14 +107,14 @@ def _get_hyperparameters() -> kerastuner.HyperParameters:
   """
   hp = kerastuner.HyperParameters()
   # Defines hyperparameter search space.
-  hp.Float('learning_rate', min_value=1e-4, max_value=1e-2, sampling='log', default=1e-3)
-  hp.Int('n_layers', 1, 2, default=1)
+  hp.Float('learning_rate', min_value=1e-4, max_value=1e-2, sampling='log', default= 0.0009167702421017742)
+  hp.Int('n_layers', 1, 2, default=2)
   # Based on n_layers, search for the optimal number of hidden units in each layer.
   with hp.conditional_scope('n_layers', 1):
-        hp.Int('n_units_1', min_value=8, max_value=128, step=8, default=8)
+        hp.Int('n_units_1', min_value=8, max_value=128, step=8, default=72)
   with hp.conditional_scope('n_layers', 2):
-        hp.Int('n_units_1', min_value=8, max_value=128, step=8, default=8)
-        hp.Int('n_units_2', min_value=8, max_value=128, step=8, default=8)
+        hp.Int('n_units_1', min_value=8, max_value=128, step=8, default=128)
+        hp.Int('n_units_2', min_value=8, max_value=128, step=8, default=80)
 
   return hp
 

@@ -29,7 +29,6 @@ from pipeline import create_pipeline
 from typing import Optional, Dict, List, Text
 from distutils.util import strtobool
 
-
 from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 from tfx.proto import trainer_pb2
@@ -56,77 +55,78 @@ from tfx.proto import trainer_pb2
 #       DATA_PATH. For example,
 #       DATA_PATH = 'gs://bucket/chicago_taxi_trips/csv/'.
 
-#DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'train')
+# DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'train')
 
-        
+
 ARTIFACT_STORE = os.path.join(os.sep, 'home', 'jupyter', 'artifact-store')
-SERVING_MODEL_DIR=os.path.join(os.sep, 'home', 'jupyter', 'serving_model')
+SERVING_MODEL_DIR = os.path.join(os.sep, 'home', 'jupyter', 'serving_model')
 DATA_ROOT_URI = 'gs://cloud-training-281409-kubeflowpipelines-default/tfx-template/data/titanic'
-        
+
 PIPELINE_NAME = Config.PIPELINE_NAME
 PIPELINE_ROOT = os.path.join(ARTIFACT_STORE, PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
-os.makedirs(PIPELINE_ROOT, exist_ok=True)    
+os.makedirs(PIPELINE_ROOT, exist_ok=True)
 
 METADATA_PATH = os.path.join(PIPELINE_ROOT, 'tfx_metadata', PIPELINE_NAME, 'metadata.db')
-        
+
+
 def run():
-  """Define a local pipeline."""
+    """Define a local pipeline."""
 
-  beam_tmp_folder = '{}/beam/tmp'.format(Config.ARTIFACT_STORE_URI)
-  beam_pipeline_args = [
-      '--runner=DataflowRunner',
-      '--experiments=shuffle_mode=auto',
-      '--project=' + Config.PROJECT_ID,
-      '--temp_location=' + beam_tmp_folder,
-      '--region=' + Config.GCP_REGION,
-  ]
+    beam_tmp_folder = '{}/beam/tmp'.format(Config.ARTIFACT_STORE_URI)
+    beam_pipeline_args = [
+        '--runner=DataflowRunner',
+        '--experiments=shuffle_mode=auto',
+        '--project=' + Config.PROJECT_ID,
+        '--temp_location=' + beam_tmp_folder,
+        '--region=' + Config.GCP_REGION,
+    ]
 
-  # Set the default values for the pipeline runtime parameters
-  data_root_uri = data_types.RuntimeParameter(
-      name='data-root-uri',
-      default=Config.DATA_ROOT_URI,
-      ptype=Text
-  )
+    # Set the default values for the pipeline runtime parameters
+    data_root_uri = data_types.RuntimeParameter(
+        name='data-root-uri',
+        default=Config.DATA_ROOT_URI,
+        ptype=Text
+    )
 
-  train_steps = data_types.RuntimeParameter(
-      name='train-steps',
-      default=30000,
-      ptype=int
-  )
+    train_steps = data_types.RuntimeParameter(
+        name='train-steps',
+        default=30000,
+        ptype=int
+    )
 
-  tuner_steps = data_types.RuntimeParameter(
-      name='tuner-steps',
-      default=2000,
-      ptype=int
-  )
+    tuner_steps = data_types.RuntimeParameter(
+        name='tuner-steps',
+        default=2000,
+        ptype=int
+    )
 
-  eval_steps = data_types.RuntimeParameter(
-      name='eval-steps',
-      default=1000,
-      ptype=int
-  )
+    eval_steps = data_types.RuntimeParameter(
+        name='eval-steps',
+        default=1000,
+        ptype=int
+    )
 
-  enable_cache = data_types.RuntimeParameter(
-      name='enable-cache',
-      default=Config.ENABLE_CACHE,
-      ptype=bool
-  )
+    enable_cache = data_types.RuntimeParameter(
+        name='enable-cache',
+        default=Config.ENABLE_CACHE,
+        ptype=bool
+    )
 
-  LocalDagRunner().run(
-      create_pipeline(
-          pipeline_name=PIPELINE_NAME,
-          pipeline_root=PIPELINE_ROOT,
-          data_path=DATA_ROOT_URI,
-          tuner_steps=tuner_steps,
-          train_steps=train_steps,
-          eval_steps=eval_steps,
-          enable_tuning=strtobool(Config.ENABLE_TUNING),
-          enable_cache=enable_cache,
-          serving_model_dir=SERVING_MODEL_DIR,
-          metadata_connection_config=metadata.sqlite_metadata_connection_config(
-              METADATA_PATH)))
+    LocalDagRunner().run(
+        create_pipeline(
+            pipeline_name=PIPELINE_NAME,
+            pipeline_root=PIPELINE_ROOT,
+            data_path=DATA_ROOT_URI,
+            tuner_steps=tuner_steps,
+            train_steps=train_steps,
+            eval_steps=eval_steps,
+            enable_tuning=strtobool(Config.ENABLE_TUNING),
+            enable_cache=enable_cache,
+            serving_model_dir=SERVING_MODEL_DIR,
+            metadata_connection_config=metadata.sqlite_metadata_connection_config(
+                METADATA_PATH)))
 
 
 if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
-  run()
+    logging.set_verbosity(logging.INFO)
+    run()
