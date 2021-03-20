@@ -269,12 +269,13 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
       })
 
 
-def _copy_tensorboard_logs(local_path: str, gcs_path: str):
+def _copy_tensorboard_logs(local_path: str, out_path: str):
     """Copies Tensorboard logs from a local dir to a GCS location.
     
     After training, batch copy Tensorboard logs locally to a GCS location. This can result
     in faster pipeline runtimes over streaming logs per batch to GCS that can get bottlenecked
     when streaming large volumes.
+    Optionally, when running locally copy to local path
     
     Args:
       local_path: local filesystem directory uri.
@@ -282,11 +283,18 @@ def _copy_tensorboard_logs(local_path: str, gcs_path: str):
     Returns:
       None.
     """
+        
+    tf.io.gfile.makedirs(out_path)
+    
     pattern = '{}/*/events.out.tfevents.*'.format(local_path)
     local_files = tf.io.gfile.glob(pattern)
-    gcs_log_files = [local_file.replace(local_path, gcs_path) for local_file in local_files]
+    #absl.logging.info('local_files : %s' % local_files)
+    
+    gcs_log_files = [local_file.replace(local_path, out_path) for local_file in local_files]
     for local_file, gcs_file in zip(local_files, gcs_log_files):
-        tf.io.gfile.copy(local_file, gcs_file)
+        folder_path = os.path.dirname(gcs_file)
+        tf.io.gfile.makedirs(folder_path)
+        tf.io.gfile.copy(local_file, gcs_file, overwrite=True)
 
         
 # TFX Trainer will call this function.

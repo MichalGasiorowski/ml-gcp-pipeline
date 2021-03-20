@@ -18,7 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
+import os, shutil
+import glob
 import time
 from absl import logging
 from tfx.orchestration import data_types
@@ -57,6 +58,7 @@ from tfx.proto import trainer_pb2
 
 # DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'train')
 
+LOCAL_LOG_DIR = '/tmp/logs'
 
 ARTIFACT_STORE = os.path.join(os.sep, 'home', 'jupyter', 'artifact-store')
 SERVING_MODEL_DIR = os.path.join(os.sep, 'home', 'jupyter', 'serving_model')
@@ -68,60 +70,43 @@ os.makedirs(PIPELINE_ROOT, exist_ok=True)
 
 METADATA_PATH = os.path.join(PIPELINE_ROOT, 'tfx_metadata', PIPELINE_NAME, 'metadata.db')
 
+enable_cache = Config.ENABLE_CACHE
+
+
+def remove_folders(folder):
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 def run():
-    """Define a local pipeline."""
-
-    beam_tmp_folder = '{}/beam/tmp'.format(Config.ARTIFACT_STORE_URI)
-    beam_pipeline_args = [
-        '--runner=DataflowRunner',
-        '--experiments=shuffle_mode=auto',
-        '--project=' + Config.PROJECT_ID,
-        '--temp_location=' + beam_tmp_folder,
-        '--region=' + Config.GCP_REGION,
-    ]
-
-    # Set the default values for the pipeline runtime parameters
-    data_root_uri = data_types.RuntimeParameter(
-        name='data-root-uri',
-        default=Config.DATA_ROOT_URI,
-        ptype=Text
-    )
-
-    train_steps = data_types.RuntimeParameter(
-        name='train-steps',
-        default=30000,
-        ptype=int
-    )
-
-    tuner_steps = data_types.RuntimeParameter(
-        name='tuner-steps',
-        default=2000,
-        ptype=int
-    )
-
-    eval_steps = data_types.RuntimeParameter(
-        name='eval-steps',
-        default=1000,
-        ptype=int
-    )
-
-    enable_cache = data_types.RuntimeParameter(
-        name='enable-cache',
-        default=Config.ENABLE_CACHE,
-        ptype=bool
-    )
+    # clear local log folder
+    logging.info('Cleaning local log folder : %s' % LOCAL_LOG_DIR)
+    remove_folders(LOCAL_LOG_DIR)
+    
+    
+    """Define a local pipeline."""    
+    data_root_uri=Config.DATA_ROOT_URI
+    train_steps=30000
+    tuner_steps=2000
+    eval_steps=1000
 
     LocalDagRunner().run(
         create_pipeline(
             pipeline_name=PIPELINE_NAME,
             pipeline_root=PIPELINE_ROOT,
-            data_path=DATA_ROOT_URI,
+            data_root_uri=DATA_ROOT_URI,
             tuner_steps=tuner_steps,
             train_steps=train_steps,
             eval_steps=eval_steps,
             enable_tuning=strtobool(Config.ENABLE_TUNING),
             enable_cache=enable_cache,
+            local_run=True,
             serving_model_dir=SERVING_MODEL_DIR,
             metadata_connection_config=metadata.sqlite_metadata_connection_config(
                 METADATA_PATH)))

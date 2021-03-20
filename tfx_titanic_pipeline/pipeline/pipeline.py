@@ -17,6 +17,7 @@ import os
 import kfp
 import tensorflow_model_analysis as tfma
 
+import absl
 from absl import app
 from absl import flags
 from typing import Any, Dict, List, Optional, Text
@@ -67,10 +68,10 @@ TRAIN_MODULE_FILE = 'model.py'
 
 def create_pipeline(pipeline_name: Text,
                     pipeline_root: Text,
-                    data_root_uri: data_types.RuntimeParameter,
-                    tuner_steps: data_types.RuntimeParameter,
-                    train_steps: data_types.RuntimeParameter,
-                    eval_steps: data_types.RuntimeParameter,
+                    data_root_uri,
+                    tuner_steps,
+                    train_steps,
+                    eval_steps,
                     enable_tuning: bool = True,
                     local_run: bool = False,
                     ai_platform_training_args: Optional[Dict[Text, Text]] = None,
@@ -107,7 +108,13 @@ def create_pipeline(pipeline_name: Text,
   Returns:
     A TFX pipeline object.
   """
-
+    
+    absl.logging.info('train_steps for training: %s' % train_steps)
+    absl.logging.info('tuner_steps for tuning: %s' % tuner_steps)
+    
+    absl.logging.info('data_root_uri for training: %s' % data_root_uri)
+    absl.logging.info('eval_steps for evaluating: %s' % eval_steps)
+    
     # Brings data into the pipeline and splits the data into training and eval splits
     output_config = example_gen_pb2.Output(
         split_config=example_gen_pb2.SplitConfig(splits=[
@@ -155,23 +162,26 @@ def create_pipeline(pipeline_name: Text,
         # The Tuner component launches 1 AI Platform Training job for flock management.
         # For example, 3 workers (defined by num_parallel_trials) in the flock
         # management AI Platform Training job, each runs Tuner.Executor.
-
-        tuner = Tuner(
-            module_file=TRAIN_MODULE_FILE,
-            examples=transform.outputs.transformed_examples,
-            transform_graph=transform.outputs.transform_graph,
-            train_args={'num_steps': tuner_steps},
-            eval_args={'num_steps': eval_steps},
-            tune_args=tuner_pb2.TuneArgs(
-                # num_parallel_trials=3 means that 3 search loops are running in parallel.
-                num_parallel_trials=3),
-            custom_config={
-                # Configures Cloud AI Platform-specific configs. For details, see
-                # https://cloud.google.com/ai-platform/training/docs/reference/rest/v1/projects.jobs#traininginput.
-                ai_platform_trainer_executor.TRAINING_ARGS_KEY: ai_platform_training_args
-            } if ai_platform_training_args is not None else None
-        )
-
+        
+        tuner_args = {
+            'module_file': TRAIN_MODULE_FILE,
+            'examples': transform.outputs.transformed_examples,
+            'transform_graph': transform.outputs.transform_graph,
+            'train_args': {'num_steps': tuner_steps},
+            'eval_args': {'num_steps': eval_steps},
+            'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
+            'hyperparameters': (tuner.outputs.best_hyperparameters if enable_tuning else None),
+        }
+        
+        if ai_platform_training_args is not None:
+            tuner_args.update({
+                'custom_config': {
+                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: ai_platform_training_args
+            }
+        })
+        
+        tuner = Tuner(**tuner_args)
+        
     #else:
     #    hparams_importer = ImporterNode(
     #        instance_name='import_hparams',
@@ -181,19 +191,35 @@ def create_pipeline(pipeline_name: Text,
     # hyperparameters = (tuner.outputs.best_hyperparameters if enable_tuning else hparams_importer.outputs['result']),
 
     # Trains the model using a user provided trainer function.
-    trainer = Trainer(
-        custom_executor_spec=executor_spec.ExecutorClassSpec(ai_platform_trainer_executor.GenericExecutor),
-        module_file=TRAIN_MODULE_FILE,
-        transformed_examples=transform.outputs.transformed_examples,
-        schema=import_schema.outputs.result,
-        transform_graph=transform.outputs.transform_graph,
-        # hyperparameters=(tuner.outputs.best_hyperparameters if enable_tuning else hparams_importer.outputs['result']),
-        hyperparameters=(tuner.outputs.best_hyperparameters if enable_tuning else None),
-        train_args={'num_steps': train_steps},
-        eval_args={'num_steps': eval_steps},
-        custom_config={'ai_platform_training_args': ai_platform_training_args}
-        if ai_platform_training_args is not None else None
-    )
+    
+    
+    trainer_args = {
+        'module_file': TRAIN_MODULE_FILE,
+        'transformed_examples': transform.outputs.transformed_examples,
+        'schema': import_schema.outputs.result,
+        'transform_graph': transform.outputs.transform_graph,
+        'train_args': {'num_steps': train_steps},
+        'eval_args': {'num_steps': eval_steps},
+        'hyperparameters': tuner.outputs.best_hyperparameters if enable_tuning else None,
+    }
+    
+    if ai_platform_training_args is not None:
+        trainer_args.update({
+            'custom_executor_spec':
+                executor_spec.ExecutorClassSpec(ai_platform_trainer_executor.GenericExecutor),
+            'custom_config': {
+                ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                    ai_platform_training_args,
+            }
+        }) 
+    else:
+        trainer_args.update({
+            'custom_executor_spec':
+                executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
+        })
+        
+    trainer = Trainer(**trainer_args)
+    
 
     # Get the latest blessed model for model validation.
     resolver = ResolverNode(
