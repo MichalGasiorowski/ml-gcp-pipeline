@@ -15,8 +15,19 @@
 
 # Install KFP and TFX SDKs
 
+# pip install -q -U -v --log /tmp/pip.log tfx==0.25.0 apache-beam[gcp]==2.25.0 ml-metadata==0.24.0 pyarrow==0.17.0 tensorflow==2.3.0 tensorflow-data-validation==0.25.0 tensorflow-metadata==0.25.0 tensorflow-model-analysis==0.25.0 tensorflow-serving-api==2.3.0 tensorflow-transform==0.25.0 tfx-bsl==0.25.0
 cat > requirements.txt << EOF
 pandas>1.0.0
+apache-beam[gcp]==2.25.0
+ml-metadata==0.24.0
+pyarrow==0.17.0
+tensorflow==2.3.0
+tensorflow-data-validation==0.25.0
+tensorflow-metadata==0.25.0
+tensorflow-model-analysis==0.25.0
+tensorflow-serving-api==2.3.0
+tensorflow-transform==0.25.0
+tfx-bsl==0.25.0
 tfx==0.25.0
 kfp==1.0.4
 EOF
@@ -26,6 +37,6 @@ python -m pip install -U --user -r requirements.txt
 # Install Skaffold
 curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64
 chmod +x skaffold
-mv skaffold /home/jupyter/.local/bin
+mv skaffold $HOME/.local/bin
 
 jupyter nbextension enable --py tensorflow_model_analysis
