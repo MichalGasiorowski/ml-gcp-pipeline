@@ -132,3 +132,4 @@ PyCharm project files
 *.iml
 .DS_Store
 .idea
+.idea/misc.xml
