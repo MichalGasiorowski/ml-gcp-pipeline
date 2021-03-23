@@ -170,7 +170,6 @@ def create_pipeline(pipeline_name: Text,
             'train_args': {'num_steps': tuner_steps},
             'eval_args': {'num_steps': eval_steps},
             'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
-            'hyperparameters': (tuner.outputs.best_hyperparameters if enable_tuning else None),
         }
         
         if ai_platform_training_args is not None:
