@@ -15,7 +15,8 @@
 
 # Install KFP and TFX SDKs
 
-# pip install -q -U -v --log /tmp/pip.log tfx==0.25.0 apache-beam[gcp]==2.25.0 ml-metadata==0.24.0 pyarrow==0.17.0 tensorflow==2.3.0 tensorflow-data-validation==0.25.0 tensorflow-metadata==0.25.0 tensorflow-model-analysis==0.25.0 tensorflow-serving-api==2.3.0 tensorflow-transform==0.25.0 tfx-bsl==0.25.0
+# pip install -q -U -v --log /tmp/pip.log tfx==0.25.0 apache-beam[gcp]==2.25.0 ml-metadata==0.25.0 pyarrow==0.17.0 tensorflow==2.3.0 tensorflow-data-validation==0.25.0 tensorflow-metadata==0.25.0 tensorflow-model-analysis==0.25.0 tensorflow-serving-api==2.3.0 tensorflow-transform==0.25.0 tfx-bsl==0.25.0
+
 cat > requirements.txt << EOF
 pandas>1.0.0
 apache-beam[gcp]==2.25.0
