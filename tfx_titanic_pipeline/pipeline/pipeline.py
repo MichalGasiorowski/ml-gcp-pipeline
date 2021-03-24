@@ -267,14 +267,22 @@ def create_pipeline(pipeline_name: Text,
 
     # Validate model can be loaded and queried in sand-boxed environment
     # mirroring production.
-    serving_config = infra_validator_pb2.ServingSpec(
-        tensorflow_serving=infra_validator_pb2.TensorFlowServing(
-            tags=['latest']),
-        kubernetes=infra_validator_pb2.KubernetesConfig(),
-    )
+
+    serving_config = None
+
+    if local_run:
+        serving_config = infra_validator_pb2.ServingSpec(
+            tensorflow_serving=infra_validator_pb2.TensorFlowServing(tags=['latest']),
+            local_docker=infra_validator_pb2.LocalDockerConfig()  # Running on local docker.
+        )
+    else:
+        serving_config = infra_validator_pb2.ServingSpec(
+            tensorflow_serving=infra_validator_pb2.TensorFlowServing(tags=['latest']),
+            kubernetes=infra_validator_pb2.KubernetesConfig() # Running on K8s.
+        )
 
     validation_config = infra_validator_pb2.ValidationSpec(
-        max_loading_time_seconds=60,
+        max_loading_time_seconds=180,
         num_tries=3,
     )
 

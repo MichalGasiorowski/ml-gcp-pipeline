@@ -58,10 +58,12 @@ from tfx.proto import trainer_pb2
 
 # DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'train')
 
+HOME = os.path.expanduser("~")
+
 LOCAL_LOG_DIR = '/tmp/logs'
 
-ARTIFACT_STORE = os.path.join(os.sep, 'home', 'jupyter', 'artifact-store')
-SERVING_MODEL_DIR = os.path.join(os.sep, 'home', 'jupyter', 'serving_model')
+ARTIFACT_STORE = os.path.join(os.sep, HOME, 'artifact-store')
+SERVING_MODEL_DIR = os.path.join(os.sep, HOME, 'serving_model')
 DATA_ROOT_URI = 'gs://cloud-training-281409-kubeflowpipelines-default/tfx-template/data/titanic'
 
 PIPELINE_NAME = Config.PIPELINE_NAME
@@ -87,6 +89,7 @@ def remove_folders(folder):
 def run():
     # clear local log folder
     logging.info('Cleaning local log folder : %s' % LOCAL_LOG_DIR)
+    os.makedirs(LOCAL_LOG_DIR, exist_ok=True)
     remove_folders(LOCAL_LOG_DIR)
     
     
