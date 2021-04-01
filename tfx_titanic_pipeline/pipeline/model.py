@@ -38,7 +38,7 @@ from tfx_bsl.tfxio import dataset_options
 import features
 
 # Model training constants.
-EPOCHS = 20
+EPOCHS = 10
 TRAIN_BATCH_SIZE = 64
 EVAL_BATCH_SIZE = 64
 LOCAL_LOG_DIR = '/tmp/logs'
@@ -57,9 +57,9 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
   @tf.function
   def serve_tf_examples_fn(serialized_tf_examples):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_output.raw_feature_spec()
-    feature_spec.pop(features.LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    raw_feature_spec.pop(features.LABEL_KEY)
+    parsed_features = tf.io.parse_example(serialized_tf_examples, raw_feature_spec)
 
     transformed_features = model.tft_layer(parsed_features)
 

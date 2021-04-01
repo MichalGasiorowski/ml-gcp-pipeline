@@ -64,6 +64,57 @@ PARCH_KEY = 'Parch'
 SIBSP_KEY = 'SibSp'
 #NUM_CLASSES = 2
 
+
+#_FEATURES = {
+#    'culmen_length_mm': tf.io.FixedLenFeature([], dtype=tf.float32),
+#    'culmen_depth_mm': tf.io.FixedLenFeature([], dtype=tf.float32),
+#    'flipper_length_mm': tf.io.FixedLenFeature([], dtype=tf.float32),
+#    'body_mass_g': tf.io.FixedLenFeature([], dtype=tf.float32),
+#    'species': tf.io.FixedLenFeature([], dtype=tf.int64)
+#}
+
+
+# taken from schema.pbtxt :
+#name: "Embarked"    BYTES
+#name: "Ticket"      BYTES
+#name: "Sex"         BYTES
+#name: "Name"        BYTES
+#name: "Cabin"       BYTES
+#name: "Age"         FLOAT
+#name: "Fare"        FLOAT
+#name: "Parch"       INT
+#name: "PassengerId" INT
+#name: "Pclass"      INT
+#name: "SibSp"       INT
+#name: "Survived"    INT
+
+
+RAW_DATA_FEATURE_SPEC = {
+  'Embarked': tf.io.FixedLenFeature([], dtype=tf.string),
+  'Ticket': tf.io.FixedLenFeature([], dtype=tf.string),
+  'Sex': tf.io.FixedLenFeature([], dtype=tf.string),
+  'Name': tf.io.FixedLenFeature([], dtype=tf.string),
+  'Cabin': tf.io.FixedLenFeature([], dtype=tf.string),
+  'Age': tf.io.FixedLenFeature([], dtype=tf.float32),
+  'Fare': tf.io.FixedLenFeature([], dtype=tf.float32),
+  'Parch': tf.io.FixedLenFeature([], dtype=tf.int64),
+  'PassengerId': tf.io.FixedLenFeature([], dtype=tf.int64),
+  'Pclass': tf.io.FixedLenFeature([], dtype=tf.int64),
+  'SibSp': tf.io.FixedLenFeature([], dtype=tf.int64),
+  'Survived': tf.io.FixedLenFeature([], dtype=tf.int64),
+}
+
+#RAW_DATA_FEATURE_SPEC = dict(
+#    [(name, tf.io.FixedLenFeature([], tf.string))
+#     for name in CATEGORICAL_FEATURE_KEYS] +
+#    [(name, tf.io.FixedLenFeature([], tf.float32))
+#     for name in NUMERIC_FEATURE_KEYS] +
+#    [(name, tf.io.VarLenFeature(tf.float32))
+#     for name in OPTIONAL_NUMERIC_FEATURE_KEYS] +
+#    [(LABEL_KEY, tf.io.FixedLenFeature([], tf.string))]
+#)
+
+
 def transformed_name(key: Text) -> Text:
   """Generate the name of the transformed feature from original name."""
   return key + '_xf'
