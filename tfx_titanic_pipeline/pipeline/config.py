@@ -33,6 +33,9 @@ class Config:
     USE_KFP_SA=os.getenv("USE_KFP_SA", "False")
     ENABLE_TUNING=os.getenv("ENABLE_TUNING", "True")
     ENABLE_CACHE = os.getenv("ENABLE_CACHE", "False")
+    TRAIN_STEPS = os.getenv("TRAIN_STEPS", "30000")
+    TUNER_STEPS = os.getenv("TUNER_STEPS", "2000")
+    EVAL_STEPS = os.getenv("EVAL_STEPS", "1000")
     
     
     

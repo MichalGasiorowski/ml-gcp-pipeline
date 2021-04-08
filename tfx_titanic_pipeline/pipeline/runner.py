@@ -53,8 +53,7 @@ if __name__ == '__main__':
       '--temp_location=' + beam_tmp_folder,
       '--region=' + Config.GCP_REGION,
   ]
-    
-  
+
   # Set the default values for the pipeline runtime parameters   
   data_root_uri = data_types.RuntimeParameter(
       name='data-root-uri',
@@ -64,19 +63,19 @@ if __name__ == '__main__':
 
   train_steps = data_types.RuntimeParameter(
       name='train-steps',
-      default=30000,
+      default=int(Config.TRAIN_STEPS),
       ptype=int
   )
     
   tuner_steps = data_types.RuntimeParameter(
       name='tuner-steps',
-      default=2000,
+      default=int(Config.TUNER_STEPS),
       ptype=int
   )
     
   eval_steps = data_types.RuntimeParameter(
       name='eval-steps',
-      default=1000,
+      default=int(Config.EVAL_STEPS),
       ptype=int
   )
 

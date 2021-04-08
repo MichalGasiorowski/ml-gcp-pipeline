@@ -62,17 +62,16 @@ HOME = os.path.expanduser("~")
 
 LOCAL_LOG_DIR = '/tmp/logs'
 
+PIPELINE_NAME = Config.PIPELINE_NAME
+
 ARTIFACT_STORE = os.path.join(os.sep, HOME, 'artifact-store')
 SERVING_MODEL_DIR = os.path.join(os.sep, HOME, 'serving_model')
-
-PIPELINE_NAME = Config.PIPELINE_NAME
 PIPELINE_ROOT = os.path.join(ARTIFACT_STORE, PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
-os.makedirs(PIPELINE_ROOT, exist_ok=True)
-
 METADATA_PATH = os.path.join(PIPELINE_ROOT, 'tfx_metadata', PIPELINE_NAME, 'metadata.db')
 
-enable_cache = Config.ENABLE_CACHE
+os.makedirs(PIPELINE_ROOT, exist_ok=True)
 
+enable_cache = Config.ENABLE_CACHE
 
 def remove_folders(folder):
     for filename in os.listdir(folder):
@@ -94,26 +93,24 @@ def run():
     
     """Define a local pipeline."""    
     data_root_uri=Config.DATA_ROOT_URI
-    train_steps=30000
-    tuner_steps=2000
-    eval_steps=1000
 
     LocalDagRunner().run(
         create_pipeline(
             pipeline_name=PIPELINE_NAME,
             pipeline_root=PIPELINE_ROOT,
             data_root_uri=data_root_uri,
-            tuner_steps=tuner_steps,
-            train_steps=train_steps,
-            eval_steps=eval_steps,
+            tuner_steps=int(Config.TUNER_STEPS),
+            train_steps=int(Config.TRAIN_STEPS),
+            eval_steps=int(Config.EVAL_STEPS),
             enable_tuning=strtobool(Config.ENABLE_TUNING),
             enable_cache=enable_cache,
             local_run=True,
             serving_model_dir=SERVING_MODEL_DIR,
             metadata_connection_config=metadata.sqlite_metadata_connection_config(
                 METADATA_PATH)))
-
+    return {"PIPELINE_ROOT": PIPELINE_ROOT, "SERVING_MODEL_DIR": SERVING_MODEL_DIR}
 
 if __name__ == '__main__':
     logging.set_verbosity(logging.INFO)
+    logging.info("PIPELINE_ROOT=" + PIPELINE_ROOT)
     run()
