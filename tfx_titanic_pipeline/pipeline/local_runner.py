@@ -64,7 +64,6 @@ LOCAL_LOG_DIR = '/tmp/logs'
 
 ARTIFACT_STORE = os.path.join(os.sep, HOME, 'artifact-store')
 SERVING_MODEL_DIR = os.path.join(os.sep, HOME, 'serving_model')
-DATA_ROOT_URI = 'gs://cloud-training-281409-kubeflowpipelines-default/tfx-template/data/titanic'
 
 PIPELINE_NAME = Config.PIPELINE_NAME
 PIPELINE_ROOT = os.path.join(ARTIFACT_STORE, PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
@@ -103,7 +102,7 @@ def run():
         create_pipeline(
             pipeline_name=PIPELINE_NAME,
             pipeline_root=PIPELINE_ROOT,
-            data_root_uri=DATA_ROOT_URI,
+            data_root_uri=data_root_uri,
             tuner_steps=tuner_steps,
             train_steps=train_steps,
             eval_steps=eval_steps,
