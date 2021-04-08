@@ -13,18 +13,13 @@
 # limitations under the License.
 """Covertype training pipeline DSL."""
 
-import os
-import kfp
-import tensorflow_model_analysis as tfma
-
-import absl
-from absl import app
-from absl import flags
 from typing import Any, Dict, List, Optional, Text
 
-from tfx.dsl.components.base import executor_spec
-from tfx.components import Evaluator
+import absl
+import tensorflow_model_analysis as tfma
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components import CsvExampleGen
+from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ImporterNode
 from tfx.components import InfraValidator
@@ -34,32 +29,21 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.components import Tuner
 from tfx.components.trainer import executor as trainer_executor
+from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
-from tfx.extensions.google_cloud_ai_platform.tuner.component import Tuner
-from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
-from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto import example_gen_pb2
-from tfx.proto import evaluator_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
-from tfx.proto import trainer_pb2
-from tfx.utils.dsl_utils import external_input
 from tfx.proto import tuner_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
-from tfx.types.standard_artifacts import InfraBlessing
 from tfx.types.standard_artifacts import Schema
-from tfx.types.standard_artifacts import HyperParameters
-
-from ml_metadata.proto import metadata_store_pb2
-
-import features
 
 SCHEMA_FOLDER = 'schema'
 TRANSFORM_MODULE_FILE = 'preprocessing.py'
@@ -159,28 +143,25 @@ def create_pipeline(pipeline_name: Text,
     # function. Note that once the hyperparameters are tuned, you can drop the
     # Tuner component from pipeline and feed Trainer with tuned hyperparameters.
     if enable_tuning:
-        # The Tuner component launches 1 AI Platform Training job for flock management.
-        # For example, 3 workers (defined by num_parallel_trials) in the flock
-        # management AI Platform Training job, each runs Tuner.Executor.
-        
         tuner_args = {
             'module_file': TRAIN_MODULE_FILE,
             'examples': transform.outputs.transformed_examples,
             'transform_graph': transform.outputs.transform_graph,
             'train_args': {'num_steps': tuner_steps},
             'eval_args': {'num_steps': eval_steps},
-            'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
+            #'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
         }
-        
+
         if ai_platform_training_args is not None:
             tuner_args.update({
                 'custom_config': {
                     ai_platform_trainer_executor.TRAINING_ARGS_KEY: ai_platform_training_args
-            }
+            },
+            'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3)
         })
-        
+        absl.logging.info("tuner_args: " + str(tuner_args))
         tuner = Tuner(**tuner_args)
-        
+
     #else:
     #    hparams_importer = ImporterNode(
     #        instance_name='import_hparams',
