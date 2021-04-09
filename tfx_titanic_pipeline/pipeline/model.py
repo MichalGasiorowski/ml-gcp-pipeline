@@ -17,6 +17,8 @@ See additional TFX example pipelines, including the Penguin Pipeline Kubeflow GC
 that this pipeline is based upon: https://github.com/tensorflow/tfx/blob/master/tfx/examples.
 
 """
+from __future__ import absolute_import
+
 
 import functools
 import absl
@@ -36,7 +38,7 @@ from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.tuner.component import TunerFnResult
 from tfx_bsl.tfxio import dataset_options
 
-import features
+import features as features
 
 # Model training constants.
 EPOCHS = 10

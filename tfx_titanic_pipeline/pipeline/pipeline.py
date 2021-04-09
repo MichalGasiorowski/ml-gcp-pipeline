@@ -13,6 +13,8 @@
 # limitations under the License.
 """Covertype training pipeline DSL."""
 
+from __future__ import absolute_import
+
 from typing import Any, Dict, List, Optional, Text
 
 import absl
@@ -66,7 +68,7 @@ def create_pipeline(pipeline_name: Text,
                     serving_model_dir: Optional[Text] = None,
                     metadata_connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
                     ) -> pipeline.Pipeline:
-    """Trains and deploys the Keras Covertype Classifier with TFX and Kubeflow Pipeline on Google Cloud.
+    """Trains and deploys the Keras Titanic Classifier with TFX and Kubeflow Pipeline on Google Cloud.
   Args:
     pipeline_name: name of the TFX pipeline being created.
     pipeline_root: root directory of the pipeline. Should be a valid GCS path.

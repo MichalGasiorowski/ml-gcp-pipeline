@@ -24,15 +24,17 @@ import time
 from absl import logging
 from tfx.orchestration import data_types
 
-from config import Config
-from pipeline import create_pipeline
-
 from typing import Optional, Dict, List, Text
 from distutils.util import strtobool
 
 from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 from tfx.proto import trainer_pb2
+
+
+from config import Config
+from pipeline import create_pipeline
+
 
 # TFX pipeline produces many output files and metadata. All output data will be
 # stored under this OUTPUT_DIR.
@@ -73,6 +75,7 @@ os.makedirs(PIPELINE_ROOT, exist_ok=True)
 
 enable_cache = Config.ENABLE_CACHE
 
+
 def remove_folders(folder):
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
@@ -84,15 +87,15 @@ def remove_folders(folder):
         except Exception as e:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
+
 def run():
     # clear local log folder
     logging.info('Cleaning local log folder : %s' % LOCAL_LOG_DIR)
     os.makedirs(LOCAL_LOG_DIR, exist_ok=True)
     remove_folders(LOCAL_LOG_DIR)
-    
-    
-    """Define a local pipeline."""    
-    data_root_uri=Config.DATA_ROOT_URI
+
+    """Define a local pipeline."""
+    data_root_uri = Config.DATA_ROOT_URI
 
     LocalDagRunner().run(
         create_pipeline(
@@ -109,6 +112,7 @@ def run():
             metadata_connection_config=metadata.sqlite_metadata_connection_config(
                 METADATA_PATH)))
     return {"PIPELINE_ROOT": PIPELINE_ROOT, "SERVING_MODEL_DIR": SERVING_MODEL_DIR}
+
 
 if __name__ == '__main__':
     logging.set_verbosity(logging.INFO)

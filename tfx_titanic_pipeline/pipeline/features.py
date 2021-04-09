@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Covertype model  taxi model features."""
-import tensorflow as tf
-import tensorflow_model_analysis as tfma
-import tensorflow_transform as tft
-from tensorflow_transform.tf_metadata import schema_utils
-from typing import Text, List
+"""Titanic model features."""
 
+from __future__ import absolute_import
+
+import tensorflow as tf
+from typing import Text, List
 
 DROPPPED_FEATURES = [
   'PassengerId', 'Name'

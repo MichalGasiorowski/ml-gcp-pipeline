@@ -14,12 +14,13 @@
 """Covertype preprocessing.
 This file defines a template for TFX Transform component.
 """
+from __future__ import absolute_import
+
 
 import tensorflow as tf
 import tensorflow_transform as tft
-import absl
 
-import features
+import features as features
 
 def _fill_in_missing(x):
   """Replace missing values in a SparseTensor.
