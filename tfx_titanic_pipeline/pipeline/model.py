@@ -321,6 +321,9 @@ def run_fn(fn_args: TrainerFnArgs):
       fn_args: Holds args used to train and tune the model as name/value pairs. See
         https://www.tensorflow.org/tfx/api_docs/python/tfx/components/trainer/fn_args_utils/FnArgs.
     """
+    epochs = fn_args.get('epochs', EPOCHS)
+    train_batch_size = fn_args.get('train_batch_size', TRAIN_BATCH_SIZE)
+    eval_batch_size = fn_args.get('eval_batch_size', EVAL_BATCH_SIZE)
 
     tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
@@ -328,13 +331,13 @@ def run_fn(fn_args: TrainerFnArgs):
         fn_args.train_files,
         fn_args.data_accessor,
         tf_transform_output,
-        TRAIN_BATCH_SIZE)
+        train_batch_size)
 
     eval_dataset = _input_fn(
         fn_args.eval_files,
         fn_args.data_accessor,
         tf_transform_output,
-        EVAL_BATCH_SIZE)
+        eval_batch_size)
 
     if fn_args.hyperparameters:
         hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
@@ -358,8 +361,8 @@ def run_fn(fn_args: TrainerFnArgs):
 
     model.fit(
         train_dataset,
-        epochs=EPOCHS,
-        steps_per_epoch=fn_args.train_steps / EPOCHS,
+        epochs=epochs,
+        steps_per_epoch=fn_args.train_steps / epochs,
         validation_data=eval_dataset,
         validation_steps=fn_args.eval_steps,
         verbose=2,

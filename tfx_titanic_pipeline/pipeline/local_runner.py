@@ -18,23 +18,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os, shutil
-import glob
+import os
+import shutil
 import time
-from absl import logging
-from tfx.orchestration import data_types
-
-from typing import Optional, Dict, List, Text
 from distutils.util import strtobool
 
+from absl import logging
 from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
-from tfx.proto import trainer_pb2
-
 
 from config import Config
-from pipeline import create_pipeline
+# from pipeline import create_pipeline
+import pipelines as pipeline
 
+
+# import features as features
 
 # TFX pipeline produces many output files and metadata. All output data will be
 # stored under this OUTPUT_DIR.
@@ -60,61 +58,79 @@ from pipeline import create_pipeline
 
 # DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'train')
 
-HOME = os.path.expanduser("~")
+class LocalRunner():
+    """Class for Local Runner encapsulation"""
 
-LOCAL_LOG_DIR = '/tmp/logs'
+    def __init__(self):
+        self.env_config = Config()
+        self._setup_pipeline_parameters_from_env()
 
-PIPELINE_NAME = Config.PIPELINE_NAME
+    def _setup_pipeline_parameters_from_env(self):
+        self.HOME = self.env_config.HOME
+        self.LOCAL_LOG_DIR = self.env_config.LOCAL_LOG_DIR
+        self.PIPELINE_NAME = self.env_config.PIPELINE_NAME
+        self.ENABLE_CACHE = self.env_config.ENABLE_CACHE
+        self.ENABLE_TUNING = self.env_config.ENABLE_TUNING
+        self.data_root_uri = self.env_config.DATA_ROOT_URI
+        self.TRAIN_STEPS = self.env_config.TRAIN_STEPS
+        self.TUNER_STEPS = self.env_config.TUNER_STEPS
+        self.EVAL_STEPS = self.env_config.EVAL_STEPS
+        self.EPOCHS = self.env_config.EPOCHS
+        self.TRAIN_BATCH_SIZE = self.env_config.TRAIN_BATCH_SIZE
+        self.EVAL_BATCH_SIZE = self.env_config.EVAL_BATCH_SIZE
 
-ARTIFACT_STORE = os.path.join(os.sep, HOME, 'artifact-store')
-SERVING_MODEL_DIR = os.path.join(os.sep, HOME, 'serving_model')
-PIPELINE_ROOT = os.path.join(ARTIFACT_STORE, PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
-METADATA_PATH = os.path.join(PIPELINE_ROOT, 'tfx_metadata', PIPELINE_NAME, 'metadata.db')
+        self.ARTIFACT_STORE = os.path.join(os.sep, self.HOME, 'artifact-store')
+        self.SERVING_MODEL_DIR = os.path.join(os.sep, self.HOME, 'serving_model')
+        self.PIPELINE_ROOT = os.path.join(self.ARTIFACT_STORE, self.PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
+        self.METADATA_PATH = os.path.join(self.PIPELINE_ROOT, 'tfx_metadata', self.PIPELINE_NAME, 'metadata.db')
 
-os.makedirs(PIPELINE_ROOT, exist_ok=True)
+    def create_pipeline_root_folders_paths(self):
+        os.makedirs(self.PIPELINE_ROOT, exist_ok=True)
 
-enable_cache = Config.ENABLE_CACHE
+    def remove_folders(self, folder):
+        for filename in os.listdir(folder):
+            file_path = os.path.join(folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
 
+    def run(self):
+        # clear local log folder
+        logging.info('Cleaning local log folder : %s' % self.LOCAL_LOG_DIR)
+        os.makedirs(self.LOCAL_LOG_DIR, exist_ok=True)
+        self.remove_folders(self.LOCAL_LOG_DIR)
 
-def remove_folders(folder):
-    for filename in os.listdir(folder):
-        file_path = os.path.join(folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+        """Define a local pipeline and run it."""
 
-
-def run():
-    # clear local log folder
-    logging.info('Cleaning local log folder : %s' % LOCAL_LOG_DIR)
-    os.makedirs(LOCAL_LOG_DIR, exist_ok=True)
-    remove_folders(LOCAL_LOG_DIR)
-
-    """Define a local pipeline."""
-    data_root_uri = Config.DATA_ROOT_URI
-
-    LocalDagRunner().run(
-        create_pipeline(
-            pipeline_name=PIPELINE_NAME,
-            pipeline_root=PIPELINE_ROOT,
-            data_root_uri=data_root_uri,
-            tuner_steps=int(Config.TUNER_STEPS),
-            train_steps=int(Config.TRAIN_STEPS),
-            eval_steps=int(Config.EVAL_STEPS),
-            enable_tuning=strtobool(Config.ENABLE_TUNING),
-            enable_cache=enable_cache,
-            local_run=True,
-            serving_model_dir=SERVING_MODEL_DIR,
-            metadata_connection_config=metadata.sqlite_metadata_connection_config(
-                METADATA_PATH)))
-    return {"PIPELINE_ROOT": PIPELINE_ROOT, "SERVING_MODEL_DIR": SERVING_MODEL_DIR}
+        LocalDagRunner().run(
+            pipeline.create_pipeline(
+                pipeline_name=self.PIPELINE_NAME,
+                pipeline_root=self.PIPELINE_ROOT,
+                data_root_uri=self.data_root_uri,
+                tuner_steps=int(self.TUNER_STEPS),
+                train_steps=int(self.TRAIN_STEPS),
+                eval_steps=int(self.EVAL_STEPS),
+                epochs=int(self.EPOCHS),
+                train_batch_size=int(self.TRAIN_BATCH_SIZE),
+                eval_batch_size=int(self.EVAL_BATCH_SIZE),
+                enable_tuning=strtobool(self.ENABLE_TUNING),
+                enable_cache=self.ENABLE_CACHE,
+                local_run=True,
+                serving_model_dir=self.SERVING_MODEL_DIR,
+                metadata_connection_config=metadata.sqlite_metadata_connection_config(
+                    self.METADATA_PATH)))
+        return self
 
 
 if __name__ == '__main__':
     logging.set_verbosity(logging.INFO)
-    logging.info("PIPELINE_ROOT=" + PIPELINE_ROOT)
-    run()
+    localRunner = LocalRunner()
+    localRunner.create_pipeline_root_folders_paths()
+
+    logging.info("PIPELINE_ROOT=" + localRunner.PIPELINE_ROOT)
+
+    localRunner.run()

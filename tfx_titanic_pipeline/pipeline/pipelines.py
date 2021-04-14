@@ -58,6 +58,9 @@ def create_pipeline(pipeline_name: Text,
                     tuner_steps,
                     train_steps,
                     eval_steps,
+                    epochs: Optional[int] = 10,
+                    train_batch_size: Optional[int] = 64,
+                    eval_batch_size: Optional[int] = 64,
                     enable_tuning: bool = True,
                     local_run: bool = False,
                     ai_platform_training_args: Optional[Dict[Text, Text]] = None,
@@ -183,16 +186,21 @@ def create_pipeline(pipeline_name: Text,
         'train_args': {'num_steps': train_steps},
         'eval_args': {'num_steps': eval_steps},
         'hyperparameters': tuner.outputs.best_hyperparameters if enable_tuning else None,
+        'custom_config': { 'epochs': epochs, 'train_batch_size': train_batch_size, 'eval_batch_size': eval_batch_size }
     }
     
     if ai_platform_training_args is not None:
+        trainer_args['custom_config'].update({
+                ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                    ai_platform_training_args,
+            })
         trainer_args.update({
             'custom_executor_spec':
                 executor_spec.ExecutorClassSpec(ai_platform_trainer_executor.GenericExecutor),
-            'custom_config': {
-                ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                    ai_platform_training_args,
-            }
+            #'custom_config': {
+            #    ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+            #        ai_platform_training_args,
+            #}
         }) 
     else:
         trainer_args.update({
@@ -209,13 +217,6 @@ def create_pipeline(pipeline_name: Text,
         resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
         model=Channel(type=Model),
         model_blessing=Channel(type=ModelBlessing))
-
-    # Uses TFMA to compute a evaluation statistics over features of a model.
-    # accuracy_threshold = tfma.MetricThreshold(
-    #              value_threshold=tfma.GenericValueThreshold(
-    #                  lower_bound={'value': 0.5},
-    #                  upper_bound={'value': 0.99}),
-    #              )
 
     # Uses TFMA to compute a evaluation statistics over features of a model.
     accuracy_threshold = tfma.MetricThreshold(
