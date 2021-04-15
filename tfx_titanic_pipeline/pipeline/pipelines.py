@@ -47,6 +47,9 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.types.standard_artifacts import Schema
 
+from pipeline_args import TrainerConfig
+
+
 SCHEMA_FOLDER = 'schema'
 TRANSFORM_MODULE_FILE = 'preprocessing.py'
 TRAIN_MODULE_FILE = 'model.py'
@@ -55,16 +58,11 @@ TRAIN_MODULE_FILE = 'model.py'
 def create_pipeline(pipeline_name: Text,
                     pipeline_root: Text,
                     data_root_uri,
+                    trainerConfig: TrainerConfig,
                     tuner_steps,
-                    train_steps,
-                    eval_steps,
-                    epochs: Optional[int] = 10,
-                    train_batch_size: Optional[int] = 64,
-                    eval_batch_size: Optional[int] = 64,
                     enable_tuning: bool = True,
                     max_trials: Optional[int] = 30,
                     local_run: bool = False,
-                    ai_platform_training_args: Optional[Dict[Text, Text]] = None,
                     ai_platform_tuner_args: Optional[Dict[Text, Text]] = None,
                     ai_platform_serving_args: Optional[Dict[Text, Any]] = None,
                     beam_pipeline_args: Optional[List[Text]] = None,
@@ -99,11 +97,11 @@ def create_pipeline(pipeline_name: Text,
     A TFX pipeline object.
   """
 
-    absl.logging.info('train_steps for training: %s' % train_steps)
+    absl.logging.info('train_steps for training: %s' % trainerConfig.train_steps)
     absl.logging.info('tuner_steps for tuning: %s' % tuner_steps)
 
     absl.logging.info('data_root_uri for training: %s' % data_root_uri)
-    absl.logging.info('eval_steps for evaluating: %s' % eval_steps)
+    absl.logging.info('eval_steps for evaluating: %s' % trainerConfig.eval_steps)
 
     # Brings data into the pipeline and splits the data into training and eval splits
     output_config = example_gen_pb2.Output(
@@ -154,7 +152,7 @@ def create_pipeline(pipeline_name: Text,
             'examples': transform.outputs.transformed_examples,
             'transform_graph': transform.outputs.transform_graph,
             'train_args': {'num_steps': tuner_steps},
-            'eval_args': {'num_steps': eval_steps},
+            'eval_args': {'num_steps': trainerConfig.eval_steps},
             'custom_config': {'max_trials': max_trials}
             # 'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
         }
@@ -185,16 +183,16 @@ def create_pipeline(pipeline_name: Text,
         'transformed_examples': transform.outputs.transformed_examples,
         'schema': import_schema.outputs.result,
         'transform_graph': transform.outputs.transform_graph,
-        'train_args': {'num_steps': train_steps},
-        'eval_args': {'num_steps': eval_steps},
+        'train_args': {'num_steps': trainerConfig.train_steps},
+        'eval_args': {'num_steps': trainerConfig.eval_steps},
         'hyperparameters': tuner.outputs.best_hyperparameters if enable_tuning else None,
-        'custom_config': {'epochs': epochs, 'train_batch_size': train_batch_size, 'eval_batch_size': eval_batch_size}
+        'custom_config': {'epochs': trainerConfig.epochs, 'train_batch_size': trainerConfig.train_batch_size, 'eval_batch_size': trainerConfig.eval_batch_size}
     }
 
-    if ai_platform_training_args is not None:
+    if trainerConfig.ai_platform_training_args is not None:
         trainer_args['custom_config'].update({
             ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                ai_platform_training_args,
+                trainerConfig.ai_platform_training_args,
         })
         trainer_args.update({
             'custom_executor_spec':

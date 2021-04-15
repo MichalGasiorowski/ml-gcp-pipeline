@@ -59,75 +59,46 @@ class PipelineTest(tf.test.TestCase):
         os.environ["EPOCHS"] = '2'
         os.environ["TRAIN_BATCH_SIZE"] = '64'
         os.environ["EVAL_BATCH_SIZE"] = '64'
-        os.environ["MAX_TRIALS"] = '30'
-
-    def setup_pipeline_arguments(self):
-        print("in setup_pipeline_arguments")
-        self.PIPELINE_NAME = self.env_config.PIPELINE_NAME
-        self.ARTIFACT_STORE = os.path.join(os.sep, HOME, 'artifact-store')
-        self.SERVING_MODEL_DIR = os.path.join(os.sep, HOME, 'serving_model')
-        self.PIPELINE_ROOT = os.path.join(self.ARTIFACT_STORE, self.PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
-        self.METADATA_PATH = os.path.join(self.PIPELINE_ROOT, 'tfx_metadata', self.PIPELINE_NAME, 'metadata.db')
-        self.enable_cache = self.env_config.ENABLE_CACHE
-        self.data_root_uri = self.env_config.DATA_ROOT_URI
-
-        os.makedirs(self.PIPELINE_ROOT, exist_ok=True)
+        os.environ["MAX_TRIALS"] = '5'
 
     def setUp(self):
         self.env_config = Config()
-        self.setup_pipeline_arguments()
+        self.local_runner = None
 
     def tearDown(self):
-        #shutil.rmtree(self.PIPELINE_ROOT)
+        shutil.rmtree(self.local_runner.PIPELINE_ROOT)
         pass
-
-    def _create_pipeline(self):
-        return pipelines.create_pipeline(
-            pipeline_name=self.PIPELINE_NAME,
-            pipeline_root=self.PIPELINE_ROOT,
-            data_root_uri=self.data_root_uri,
-            tuner_steps=int(self.env_config.TUNER_STEPS),
-            train_steps=int(self.env_config.TRAIN_STEPS),
-            eval_steps=int(self.env_config.EVAL_STEPS),
-            epochs=int(self.env_config.EPOCHS),
-            enable_tuning=strtobool(self.env_config.ENABLE_TUNING),
-            max_trials=int(self.env_config.MAX_TRIALS),
-            enable_cache=self.enable_cache,
-            local_run=True,
-            serving_model_dir=self.SERVING_MODEL_DIR,
-            metadata_connection_config=metadata.sqlite_metadata_connection_config(
-                self.METADATA_PATH))
 
     # test scenarios below
 
     def testLocalDagRunnerWithoutTuning(self):
-        local_runner = LocalRunner()
-        local_runner.create_pipeline_root_folders_paths()
+        self.local_runner = LocalRunner()
+        self.local_runner.create_pipeline_root_folders_paths()
 
-        local_runner.run()
+        self.local_runner.run()
 
         for comp in PipelineTest.component_output_directories:
-            self.assertTrue(os.path.exists(os.path.join(self.PIPELINE_ROOT, comp)))
+            self.assertTrue(os.path.exists(os.path.join(self.local_runner.PIPELINE_ROOT, comp)))
 
-        self.assertNotEmpty(glob.glob(os.path.join(self.PIPELINE_ROOT, 'CsvExampleGen/**/train/data_tfrecord*.*'), recursive=True))
-        self.assertNotEmpty(glob.glob(os.path.join(self.PIPELINE_ROOT, 'CsvExampleGen/**/eval/data_tfrecord*.*'), recursive=True))
+        self.assertNotEmpty(glob.glob(os.path.join(self.local_runner.PIPELINE_ROOT, 'CsvExampleGen/**/train/data_tfrecord*.*'), recursive=True))
+        self.assertNotEmpty(glob.glob(os.path.join(self.local_runner.PIPELINE_ROOT, 'CsvExampleGen/**/eval/data_tfrecord*.*'), recursive=True))
 
     def testLocalDagRunnerWithTuning(self):
         os.environ["ENABLE_TUNING"] = 'True'
         os.environ["MAX_TRIALS"] = '5'
-        local_runner = LocalRunner()
-        local_runner.create_pipeline_root_folders_paths()
+        self.local_runner = LocalRunner()
+        self.local_runner.create_pipeline_root_folders_paths()
 
-        local_runner.run()
+        self.local_runner.run()
 
         for comp in PipelineTest.component_output_directories_wth_tuning:
-            self.assertTrue(os.path.exists(os.path.join(self.PIPELINE_ROOT, comp)),
-                            msg=f'{comp} component directory doesnt exist in PIPELINE_ROOT ( {self.PIPELINE_ROOT} ) ')
+            self.assertTrue(os.path.exists(os.path.join(self.local_runner.PIPELINE_ROOT, comp)),
+                            msg=f'{comp} component directory doesnt exist in PIPELINE_ROOT ( {self.local_runner.PIPELINE_ROOT} ) ')
 
         self.assertNotEmpty(
-            glob.glob(os.path.join(self.PIPELINE_ROOT, 'CsvExampleGen/**/train/data_tfrecord*.*'), recursive=True))
+            glob.glob(os.path.join(self.local_runner.PIPELINE_ROOT, 'CsvExampleGen/**/train/data_tfrecord*.*'), recursive=True))
         self.assertNotEmpty(
-            glob.glob(os.path.join(self.PIPELINE_ROOT, 'CsvExampleGen/**/eval/data_tfrecord*.*'), recursive=True))
+            glob.glob(os.path.join(self.local_runner.PIPELINE_ROOT, 'CsvExampleGen/**/eval/data_tfrecord*.*'), recursive=True))
 
 if __name__ == '__main__':
     tf.test.main()

@@ -28,6 +28,8 @@ from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
 from config import Config
+from pipeline_args import TrainerConfig
+
 # from pipeline import create_pipeline
 import pipelines as pipeline
 
@@ -85,6 +87,8 @@ class LocalRunner():
         self.PIPELINE_ROOT = os.path.join(self.ARTIFACT_STORE, self.PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
         self.METADATA_PATH = os.path.join(self.PIPELINE_ROOT, 'tfx_metadata', self.PIPELINE_NAME, 'metadata.db')
 
+        self.trainerConfig = TrainerConfig.from_config(config=self.env_config, ai_platform_training_args = None)
+
     def create_pipeline_root_folders_paths(self):
         os.makedirs(self.PIPELINE_ROOT, exist_ok=True)
 
@@ -113,11 +117,7 @@ class LocalRunner():
                 pipeline_root=self.PIPELINE_ROOT,
                 data_root_uri=self.data_root_uri,
                 tuner_steps=int(self.TUNER_STEPS),
-                train_steps=int(self.TRAIN_STEPS),
-                eval_steps=int(self.EVAL_STEPS),
-                epochs=int(self.EPOCHS),
-                train_batch_size=int(self.TRAIN_BATCH_SIZE),
-                eval_batch_size=int(self.EVAL_BATCH_SIZE),
+                trainerConfig=self.trainerConfig,
                 enable_tuning=strtobool(self.ENABLE_TUNING),
                 max_trials=int(self.MAX_TRIALS),
                 enable_cache=self.ENABLE_CACHE,
