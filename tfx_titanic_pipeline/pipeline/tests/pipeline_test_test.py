@@ -35,6 +35,11 @@ LOCAL_LOG_DIR = '/tmp/logs'
 
 
 class PipelineTest(tf.test.TestCase):
+    component_output_directories = ["CsvExampleGen", "StatisticsGen", "SchemaGen", "ExampleValidator", "Transform",
+                                    "Trainer", "Evaluator", "InfraValidator", "Pusher"]
+    component_output_directories += ["tfx_metadata"]
+
+    component_output_directories_wth_tuning = component_output_directories + ["Tuner"]
 
     @classmethod
     def setUpClass(cls):
@@ -50,12 +55,13 @@ class PipelineTest(tf.test.TestCase):
         os.environ["PYTHON_VERSION"] = '3.7'
         os.environ["ENABLE_TUNING"] = 'False'
         os.environ["ENABLE_CACHE"] = 'True'
-        os.environ["TRAIN_STEPS"] = '1000'
-        os.environ["TUNER_STEPS"] = '500'
-        os.environ["EVAL_STEPS"] = '500'
+        os.environ["TRAIN_STEPS"] = '100'
+        os.environ["TUNER_STEPS"] = '50'
+        os.environ["EVAL_STEPS"] = '50'
         os.environ["EPOCHS"] = '2'
         os.environ["TRAIN_BATCH_SIZE"] = '64'
         os.environ["EVAL_BATCH_SIZE"] = '64'
+        os.environ["MAX_TRIALS"] = '30'
 
     def setup_pipeline_arguments(self):
         print("in setup_pipeline_arguments")
@@ -74,7 +80,8 @@ class PipelineTest(tf.test.TestCase):
         self.setup_pipeline_arguments()
 
     def tearDown(self):
-        shutil.rmtree(self.PIPELINE_ROOT)
+        #shutil.rmtree(self.PIPELINE_ROOT)
+        pass
 
     def _create_pipeline(self):
         return pipelines.create_pipeline(
@@ -86,6 +93,7 @@ class PipelineTest(tf.test.TestCase):
             eval_steps=int(self.env_config.EVAL_STEPS),
             epochs=int(self.env_config.EPOCHS),
             enable_tuning=strtobool(self.env_config.ENABLE_TUNING),
+            max_trials=int(self.env_config.MAX_TRIALS),
             enable_cache=self.enable_cache,
             local_run=True,
             serving_model_dir=self.SERVING_MODEL_DIR,
@@ -94,24 +102,34 @@ class PipelineTest(tf.test.TestCase):
 
     # test scenarios below
 
-    #def testPipelineCreation(self):
-    #    created_pipeline = self._create_pipeline()
-
-    #    self.assertLen(created_pipeline.components, 12, "12 components should be present in the pipeline.")
-
     def testLocalDagRunnerWithoutTuning(self):
         local_runner = LocalRunner()
-        local_runner._setup_pipeline_parameters_from_env()
         local_runner.create_pipeline_root_folders_paths()
 
         local_runner.run()
 
+        for comp in PipelineTest.component_output_directories:
+            self.assertTrue(os.path.exists(os.path.join(self.PIPELINE_ROOT, comp)))
+
         self.assertNotEmpty(glob.glob(os.path.join(self.PIPELINE_ROOT, 'CsvExampleGen/**/train/data_tfrecord*.*'), recursive=True))
         self.assertNotEmpty(glob.glob(os.path.join(self.PIPELINE_ROOT, 'CsvExampleGen/**/eval/data_tfrecord*.*'), recursive=True))
 
-        #tfx_metadata/ tfx - titanic - training
+    def testLocalDagRunnerWithTuning(self):
+        os.environ["ENABLE_TUNING"] = 'True'
+        os.environ["MAX_TRIALS"] = '5'
+        local_runner = LocalRunner()
+        local_runner.create_pipeline_root_folders_paths()
 
-        self.assertTrue(True)
+        local_runner.run()
+
+        for comp in PipelineTest.component_output_directories_wth_tuning:
+            self.assertTrue(os.path.exists(os.path.join(self.PIPELINE_ROOT, comp)),
+                            msg=f'{comp} component directory doesnt exist in PIPELINE_ROOT ( {self.PIPELINE_ROOT} ) ')
+
+        self.assertNotEmpty(
+            glob.glob(os.path.join(self.PIPELINE_ROOT, 'CsvExampleGen/**/train/data_tfrecord*.*'), recursive=True))
+        self.assertNotEmpty(
+            glob.glob(os.path.join(self.PIPELINE_ROOT, 'CsvExampleGen/**/eval/data_tfrecord*.*'), recursive=True))
 
 if __name__ == '__main__':
     tf.test.main()

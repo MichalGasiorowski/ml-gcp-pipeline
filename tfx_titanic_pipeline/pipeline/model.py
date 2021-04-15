@@ -34,6 +34,7 @@ from tensorflow_cloud import CloudTuner
 from tfx.extensions.google_cloud_ai_platform.tuner.component import Tuner
 
 from tfx.components.trainer.executor import TrainerFnArgs
+from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.tuner.component import TunerFnResult
 from tfx_bsl.tfxio import dataset_options
@@ -41,10 +42,12 @@ from tfx_bsl.tfxio import dataset_options
 import features as features
 
 # Model training constants.
+
 EPOCHS = 10
 TRAIN_BATCH_SIZE = 64
 EVAL_BATCH_SIZE = 64
 LOCAL_LOG_DIR = '/tmp/logs'
+MAX_TRIALS = 30
 
 
 def _gzip_reader_fn(filenames):
@@ -221,7 +224,7 @@ def _build_keras_model(hparams: kerastuner.HyperParameters,
 
 
 # TFX Tuner will call this function.
-def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
+def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
     """Build the tuner using CloudTuner (KerasTuner instance).
     Args:
       fn_args: Holds args used to train and tune the model as name/value pairs. See
@@ -233,6 +236,9 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
                       model , e.g., the training and validation dataset. Required
                       args depend on the above tuner's implementation.
     """
+
+    max_trials = fn_args.custom_config.get('max_trials', MAX_TRIALS)
+
     transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
 
     # Construct a build_keras_model_fn that just takes hyperparams from get_hyperparameters as input.
@@ -245,7 +251,7 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
     if is_local_run:
         tuner = kerastuner.RandomSearch(
             build_keras_model_fn,
-            max_trials=30,
+            max_trials=max_trials,
             hyperparameters=_get_hyperparameters(),
             allow_new_entries=False,
             objective=kerastuner.Objective('val_binary_accuracy', 'max'),
@@ -256,7 +262,7 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
             build_keras_model_fn,
             project_id=fn_args.custom_config['ai_platform_training_args']['project'],
             region=fn_args.custom_config['ai_platform_training_args']['region'],
-            max_trials=30,
+            max_trials=max_trials,
             hyperparameters=_get_hyperparameters(),
             objective=kerastuner.Objective('val_binary_accuracy', 'max'),
             # objective=kerastuner.Objective('auc', 'min'),
@@ -286,32 +292,7 @@ def tuner_fn(fn_args: TrainerFnArgs) -> TunerFnResult:
         })
 
 
-def _copy_tensorboard_logs(local_path: str, out_path: str):
-    """Copies Tensorboard logs from a local dir to a GCS location.
-    
-    After training, batch copy Tensorboard logs locally to a GCS location. This can result
-    in faster pipeline runtimes over streaming logs per batch to GCS that can get bottlenecked
-    when streaming large volumes.
-    Optionally, when running locally copy to local path
-    
-    Args:
-      local_path: local filesystem directory uri.
-      gcs_path: cloud filesystem directory uri.
-    Returns:
-      None.
-    """
 
-    tf.io.gfile.makedirs(out_path)
-
-    pattern = '{}/*/events.out.tfevents.*'.format(local_path)
-    local_files = tf.io.gfile.glob(pattern)
-    # absl.logging.info('local_files : %s' % local_files)
-
-    gcs_log_files = [local_file.replace(local_path, out_path) for local_file in local_files]
-    for local_file, gcs_file in zip(local_files, gcs_log_files):
-        folder_path = os.path.dirname(gcs_file)
-        tf.io.gfile.makedirs(folder_path)
-        tf.io.gfile.copy(local_file, gcs_file, overwrite=True)
 
 
 # TFX Trainer will call this function.
@@ -380,3 +361,31 @@ def run_fn(fn_args: TrainerFnArgs):
 
     model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
     _copy_tensorboard_logs(LOCAL_LOG_DIR, fn_args.serving_model_dir + '/logs')
+
+
+def _copy_tensorboard_logs(local_path: str, out_path: str):
+    """Copies Tensorboard logs from a local dir to a GCS location.
+
+    After training, batch copy Tensorboard logs locally to a GCS location. This can result
+    in faster pipeline runtimes over streaming logs per batch to GCS that can get bottlenecked
+    when streaming large volumes.
+    Optionally, when running locally copy to local path
+
+    Args:
+      local_path: local filesystem directory uri.
+      gcs_path: cloud filesystem directory uri.
+    Returns:
+      None.
+    """
+
+    tf.io.gfile.makedirs(out_path)
+
+    pattern = '{}/*/events.out.tfevents.*'.format(local_path)
+    local_files = tf.io.gfile.glob(pattern)
+    # absl.logging.info('local_files : %s' % local_files)
+
+    gcs_log_files = [local_file.replace(local_path, out_path) for local_file in local_files]
+    for local_file, gcs_file in zip(local_files, gcs_log_files):
+        folder_path = os.path.dirname(gcs_file)
+        tf.io.gfile.makedirs(folder_path)
+        tf.io.gfile.copy(local_file, gcs_file, overwrite=True)

@@ -47,6 +47,7 @@ class Config:
         self.EPOCHS = os.getenv("EPOCHS", "10")
         self.TRAIN_BATCH_SIZE = os.getenv("TRAIN_BATCH_SIZE", "64")
         self.EVAL_BATCH_SIZE = os.getenv("EVAL_BATCH_SIZE", "64")
+        self.MAX_TRIALS = os.getenv("MAX_TRIALS", "30")
 
         self.HOME = os.getenv("HOME", os.path.expanduser("~"))
         self.LOCAL_LOG_DIR = os.getenv("LOCAL_LOG_DIR", '/tmp/logs')

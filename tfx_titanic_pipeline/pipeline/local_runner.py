@@ -76,6 +76,7 @@ class LocalRunner():
         self.TUNER_STEPS = self.env_config.TUNER_STEPS
         self.EVAL_STEPS = self.env_config.EVAL_STEPS
         self.EPOCHS = self.env_config.EPOCHS
+        self.MAX_TRIALS = self.env_config.MAX_TRIALS
         self.TRAIN_BATCH_SIZE = self.env_config.TRAIN_BATCH_SIZE
         self.EVAL_BATCH_SIZE = self.env_config.EVAL_BATCH_SIZE
 
@@ -118,6 +119,7 @@ class LocalRunner():
                 train_batch_size=int(self.TRAIN_BATCH_SIZE),
                 eval_batch_size=int(self.EVAL_BATCH_SIZE),
                 enable_tuning=strtobool(self.ENABLE_TUNING),
+                max_trials=int(self.MAX_TRIALS),
                 enable_cache=self.ENABLE_CACHE,
                 local_run=True,
                 serving_model_dir=self.SERVING_MODEL_DIR,

@@ -62,6 +62,7 @@ def create_pipeline(pipeline_name: Text,
                     train_batch_size: Optional[int] = 64,
                     eval_batch_size: Optional[int] = 64,
                     enable_tuning: bool = True,
+                    max_trials: Optional[int] = 30,
                     local_run: bool = False,
                     ai_platform_training_args: Optional[Dict[Text, Text]] = None,
                     ai_platform_tuner_args: Optional[Dict[Text, Text]] = None,
@@ -154,6 +155,7 @@ def create_pipeline(pipeline_name: Text,
             'transform_graph': transform.outputs.transform_graph,
             'train_args': {'num_steps': tuner_steps},
             'eval_args': {'num_steps': eval_steps},
+            'custom_config': {'max_trials': max_trials}
             #'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
         }
 
