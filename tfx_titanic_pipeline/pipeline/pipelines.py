@@ -98,13 +98,13 @@ def create_pipeline(pipeline_name: Text,
   Returns:
     A TFX pipeline object.
   """
-    
+
     absl.logging.info('train_steps for training: %s' % train_steps)
     absl.logging.info('tuner_steps for tuning: %s' % tuner_steps)
-    
+
     absl.logging.info('data_root_uri for training: %s' % data_root_uri)
     absl.logging.info('eval_steps for evaluating: %s' % eval_steps)
-    
+
     # Brings data into the pipeline and splits the data into training and eval splits
     output_config = example_gen_pb2.Output(
         split_config=example_gen_pb2.SplitConfig(splits=[
@@ -156,20 +156,21 @@ def create_pipeline(pipeline_name: Text,
             'train_args': {'num_steps': tuner_steps},
             'eval_args': {'num_steps': eval_steps},
             'custom_config': {'max_trials': max_trials}
-            #'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
+            # 'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
         }
 
-        if ai_platform_training_args is not None:
+        if ai_platform_tuner_args is not None:
             tuner_args.update({
                 'custom_config': {
-                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: ai_platform_training_args
-            },
-            'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3)
-        })
+                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: ai_platform_tuner_args
+                },
+                'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3)
+            })
+
         absl.logging.info("tuner_args: " + str(tuner_args))
         tuner = Tuner(**tuner_args)
 
-    #else:
+    # else:
     #    hparams_importer = ImporterNode(
     #        instance_name='import_hparams',
     #        source_uri='hyperparameters',
@@ -178,8 +179,7 @@ def create_pipeline(pipeline_name: Text,
     # hyperparameters = (tuner.outputs.best_hyperparameters if enable_tuning else hparams_importer.outputs['result']),
 
     # Trains the model using a user provided trainer function.
-    
-    
+
     trainer_args = {
         'module_file': TRAIN_MODULE_FILE,
         'transformed_examples': transform.outputs.transformed_examples,
@@ -188,30 +188,29 @@ def create_pipeline(pipeline_name: Text,
         'train_args': {'num_steps': train_steps},
         'eval_args': {'num_steps': eval_steps},
         'hyperparameters': tuner.outputs.best_hyperparameters if enable_tuning else None,
-        'custom_config': { 'epochs': epochs, 'train_batch_size': train_batch_size, 'eval_batch_size': eval_batch_size }
+        'custom_config': {'epochs': epochs, 'train_batch_size': train_batch_size, 'eval_batch_size': eval_batch_size}
     }
-    
+
     if ai_platform_training_args is not None:
         trainer_args['custom_config'].update({
-                ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                    ai_platform_training_args,
-            })
+            ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                ai_platform_training_args,
+        })
         trainer_args.update({
             'custom_executor_spec':
                 executor_spec.ExecutorClassSpec(ai_platform_trainer_executor.GenericExecutor),
-            #'custom_config': {
+            # 'custom_config': {
             #    ai_platform_trainer_executor.TRAINING_ARGS_KEY:
             #        ai_platform_training_args,
-            #}
-        }) 
+            # }
+        })
     else:
         trainer_args.update({
             'custom_executor_spec':
                 executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
         })
-        
+
     trainer = Trainer(**trainer_args)
-    
 
     # Get the latest blessed model for model validation.
     resolver = ResolverNode(
@@ -264,7 +263,7 @@ def create_pipeline(pipeline_name: Text,
     else:
         serving_config = infra_validator_pb2.ServingSpec(
             tensorflow_serving=infra_validator_pb2.TensorFlowServing(tags=['latest']),
-            kubernetes=infra_validator_pb2.KubernetesConfig() # Running on K8s.
+            kubernetes=infra_validator_pb2.KubernetesConfig()  # Running on K8s.
         )
 
     validation_config = infra_validator_pb2.ValidationSpec(
