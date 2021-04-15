@@ -18,10 +18,8 @@ import pipeline.pipelines as pipelines
 from distutils.util import strtobool
 from tfx.orchestration import metadata
 dir_path = os.path.dirname(os.path.realpath(__file__))
-print("dir_path: ", dir_path)
 
 tests_path = os.getcwd()
-print("tests_path: ", tests_path)
 local_data_dirpath = os.path.join(tests_path, '../', 'data')
 local_data_dirpath = os.path.normpath(local_data_dirpath)
 
