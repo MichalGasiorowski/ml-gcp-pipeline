@@ -46,6 +46,7 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.types.standard_artifacts import Schema
+from tfx.types.standard_artifacts import HyperParameters
 
 from pipeline_args import TrainerConfig
 from pipeline_args import TunerConfig
@@ -143,6 +144,12 @@ def create_pipeline(pipeline_name: Text,
     # Tunes the hyperparameters for model training based on user-provided Python
     # function. Note that once the hyperparameters are tuned, you can drop the
     # Tuner component from pipeline and feed Trainer with tuned hyperparameters.
+
+    hparams_importer = ImporterNode(
+        instance_name='import_hparams',
+        source_uri='hyperparameters',
+        artifact_type=HyperParameters)
+
     if tunerConfig.enable_tuning:
         tuner_args = {
             'module_file': TRAIN_MODULE_FILE,
@@ -165,13 +172,7 @@ def create_pipeline(pipeline_name: Text,
         absl.logging.info("tuner_args: " + str(tuner_args))
         tuner = Tuner(**tuner_args)
 
-    # else:
-    #    hparams_importer = ImporterNode(
-    #        instance_name='import_hparams',
-    #        source_uri='hyperparameters',
-    #        artifact_type=HyperParameters)
-
-    # hyperparameters = (tuner.outputs.best_hyperparameters if enable_tuning else hparams_importer.outputs['result']),
+    hyperparameters = tuner.outputs.best_hyperparameters if tunerConfig.enable_tuning else hparams_importer.outputs['result']
 
     # Trains the model using a user provided trainer function.
 
@@ -182,7 +183,8 @@ def create_pipeline(pipeline_name: Text,
         'transform_graph': transform.outputs.transform_graph,
         'train_args': {'num_steps': trainerConfig.train_steps},
         'eval_args': {'num_steps': trainerConfig.eval_steps},
-        'hyperparameters': tuner.outputs.best_hyperparameters if tunerConfig.enable_tuning else None,
+        #'hyperparameters': tuner.outputs.best_hyperparameters if tunerConfig.enable_tuning else None,
+        'hyperparameters': hyperparameters,
         'custom_config': {'epochs': trainerConfig.epochs, 'train_batch_size': trainerConfig.train_batch_size,
                           'eval_batch_size': trainerConfig.eval_batch_size}
     }
@@ -324,8 +326,8 @@ def create_pipeline(pipeline_name: Text,
 
     if tunerConfig.enable_tuning:
         components.append(tuner)
-    # else:
-    #  components.append(hparams_importer)
+    else:
+        components.append(hparams_importer)
 
     return pipeline.Pipeline(
         pipeline_name=pipeline_name,
