@@ -39,15 +39,18 @@ class Config:
         self.RUNTIME_VERSION = os.getenv("RUNTIME_VERSION", "2.3")
         self.PYTHON_VERSION = os.getenv("PYTHON_VERSION", "3.7")
         self.USE_KFP_SA = os.getenv("USE_KFP_SA", "False")
+
         self.ENABLE_TUNING = os.getenv("ENABLE_TUNING", "True")
+        self.TUNER_STEPS = os.getenv("TUNER_STEPS", "2000")
+        self.MAX_TRIALS = os.getenv("MAX_TRIALS", "30")
+
         self.ENABLE_CACHE = os.getenv("ENABLE_CACHE", "False")
         self.TRAIN_STEPS = os.getenv("TRAIN_STEPS", "30000")
-        self.TUNER_STEPS = os.getenv("TUNER_STEPS", "2000")
         self.EVAL_STEPS = os.getenv("EVAL_STEPS", "1000")
         self.EPOCHS = os.getenv("EPOCHS", "10")
         self.TRAIN_BATCH_SIZE = os.getenv("TRAIN_BATCH_SIZE", "64")
         self.EVAL_BATCH_SIZE = os.getenv("EVAL_BATCH_SIZE", "64")
-        self.MAX_TRIALS = os.getenv("MAX_TRIALS", "30")
+
 
         self.HOME = os.getenv("HOME", os.path.expanduser("~"))
         self.LOCAL_LOG_DIR = os.getenv("LOCAL_LOG_DIR", '/tmp/logs')

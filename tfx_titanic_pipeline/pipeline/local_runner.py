@@ -29,6 +29,8 @@ from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
 from config import Config
 from pipeline_args import TrainerConfig
+from pipeline_args import TunerConfig
+from pipeline_args import PusherConfig
 
 # from pipeline import create_pipeline
 import pipelines as pipeline
@@ -72,22 +74,18 @@ class LocalRunner():
         self.LOCAL_LOG_DIR = self.env_config.LOCAL_LOG_DIR
         self.PIPELINE_NAME = self.env_config.PIPELINE_NAME
         self.ENABLE_CACHE = self.env_config.ENABLE_CACHE
-        self.ENABLE_TUNING = self.env_config.ENABLE_TUNING
         self.data_root_uri = self.env_config.DATA_ROOT_URI
-        self.TRAIN_STEPS = self.env_config.TRAIN_STEPS
-        self.TUNER_STEPS = self.env_config.TUNER_STEPS
-        self.EVAL_STEPS = self.env_config.EVAL_STEPS
-        self.EPOCHS = self.env_config.EPOCHS
-        self.MAX_TRIALS = self.env_config.MAX_TRIALS
-        self.TRAIN_BATCH_SIZE = self.env_config.TRAIN_BATCH_SIZE
-        self.EVAL_BATCH_SIZE = self.env_config.EVAL_BATCH_SIZE
 
         self.ARTIFACT_STORE = os.path.join(os.sep, self.HOME, 'artifact-store')
         self.SERVING_MODEL_DIR = os.path.join(os.sep, self.HOME, 'serving_model')
         self.PIPELINE_ROOT = os.path.join(self.ARTIFACT_STORE, self.PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
         self.METADATA_PATH = os.path.join(self.PIPELINE_ROOT, 'tfx_metadata', self.PIPELINE_NAME, 'metadata.db')
 
-        self.trainerConfig = TrainerConfig.from_config(config=self.env_config, ai_platform_training_args = None)
+        self.trainerConfig = TrainerConfig.from_config(config=self.env_config, ai_platform_training_args=None)
+        self.tunerConfig = TunerConfig.from_config(config=self.env_config, ai_platform_tuner_args=None)
+        self.pusherConfig = PusherConfig.from_config(config=self.env_config,  serving_model_dir=self.SERVING_MODEL_DIR,
+                                                     ai_platform_serving_args=None)
+
 
     def create_pipeline_root_folders_paths(self):
         os.makedirs(self.PIPELINE_ROOT, exist_ok=True)
@@ -116,13 +114,11 @@ class LocalRunner():
                 pipeline_name=self.PIPELINE_NAME,
                 pipeline_root=self.PIPELINE_ROOT,
                 data_root_uri=self.data_root_uri,
-                tuner_steps=int(self.TUNER_STEPS),
                 trainerConfig=self.trainerConfig,
-                enable_tuning=strtobool(self.ENABLE_TUNING),
-                max_trials=int(self.MAX_TRIALS),
+                tunerConfig=self.tunerConfig,
+                pusherConfig=self.pusherConfig,
                 enable_cache=self.ENABLE_CACHE,
                 local_run=True,
-                serving_model_dir=self.SERVING_MODEL_DIR,
                 metadata_connection_config=metadata.sqlite_metadata_connection_config(
                     self.METADATA_PATH)))
         return self

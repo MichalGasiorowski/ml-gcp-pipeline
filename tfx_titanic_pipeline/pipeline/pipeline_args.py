@@ -41,16 +41,13 @@ class TunerConfig:
 
 class PusherConfig:
 
-    def __init__(self, enable_tuning: bool, tuner_steps: int, max_trials: int,
-                 ai_platform_tuner_args: Optional[Dict[Text, Text]] = None
+    def __init__(self, serving_model_dir: Optional[Text],
+                 ai_platform_serving_args: Optional[Dict[Text, Text]] = None
                  ):
-        self.enable_tuning = enable_tuning
-        self.tuner_steps = tuner_steps
-        self.max_trials = max_trials
-        self.ai_platform_tuner_args = ai_platform_tuner_args
+        self.serving_model_dir = serving_model_dir
+        self.ai_platform_serving_args = ai_platform_serving_args
 
     @classmethod
-    def from_config(cls, config: Config):
-        return cls(enable_tuning=strtobool(config.ENABLE_TUNING), tuner_steps=int(config.TUNER_STEPS),
-                   max_trials=int(config.MAX_TRIALS))
+    def from_config(cls, config: Config, serving_model_dir, ai_platform_serving_args):
+        return cls(serving_model_dir=serving_model_dir, ai_platform_serving_args=ai_platform_serving_args)
 

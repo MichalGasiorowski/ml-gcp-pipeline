@@ -48,7 +48,8 @@ from tfx.types.standard_artifacts import ModelBlessing
 from tfx.types.standard_artifacts import Schema
 
 from pipeline_args import TrainerConfig
-
+from pipeline_args import TunerConfig
+from pipeline_args import PusherConfig
 
 SCHEMA_FOLDER = 'schema'
 TRANSFORM_MODULE_FILE = 'preprocessing.py'
@@ -59,15 +60,11 @@ def create_pipeline(pipeline_name: Text,
                     pipeline_root: Text,
                     data_root_uri,
                     trainerConfig: TrainerConfig,
-                    tuner_steps,
-                    enable_tuning: bool = True,
-                    max_trials: Optional[int] = 30,
+                    tunerConfig: TunerConfig,
+                    pusherConfig: PusherConfig,
                     local_run: bool = False,
-                    ai_platform_tuner_args: Optional[Dict[Text, Text]] = None,
-                    ai_platform_serving_args: Optional[Dict[Text, Any]] = None,
                     beam_pipeline_args: Optional[List[Text]] = None,
                     enable_cache: Optional[bool] = True,
-                    serving_model_dir: Optional[Text] = None,
                     metadata_connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
                     ) -> pipeline.Pipeline:
     """Trains and deploys the Keras Titanic Classifier with TFX and Kubeflow Pipeline on Google Cloud.
@@ -98,7 +95,7 @@ def create_pipeline(pipeline_name: Text,
   """
 
     absl.logging.info('train_steps for training: %s' % trainerConfig.train_steps)
-    absl.logging.info('tuner_steps for tuning: %s' % tuner_steps)
+    absl.logging.info('tuner_steps for tuning: %s' % tunerConfig.tuner_steps)
 
     absl.logging.info('data_root_uri for training: %s' % data_root_uri)
     absl.logging.info('eval_steps for evaluating: %s' % trainerConfig.eval_steps)
@@ -146,21 +143,21 @@ def create_pipeline(pipeline_name: Text,
     # Tunes the hyperparameters for model training based on user-provided Python
     # function. Note that once the hyperparameters are tuned, you can drop the
     # Tuner component from pipeline and feed Trainer with tuned hyperparameters.
-    if enable_tuning:
+    if tunerConfig.enable_tuning:
         tuner_args = {
             'module_file': TRAIN_MODULE_FILE,
             'examples': transform.outputs.transformed_examples,
             'transform_graph': transform.outputs.transform_graph,
-            'train_args': {'num_steps': tuner_steps},
+            'train_args': {'num_steps': tunerConfig.tuner_steps},
             'eval_args': {'num_steps': trainerConfig.eval_steps},
-            'custom_config': {'max_trials': max_trials}
+            'custom_config': {'max_trials': tunerConfig.max_trials}
             # 'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
         }
 
-        if ai_platform_tuner_args is not None:
+        if tunerConfig.ai_platform_tuner_args is not None:
             tuner_args.update({
                 'custom_config': {
-                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: ai_platform_tuner_args
+                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: tunerConfig.ai_platform_tuner_args
                 },
                 'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3)
             })
@@ -185,8 +182,9 @@ def create_pipeline(pipeline_name: Text,
         'transform_graph': transform.outputs.transform_graph,
         'train_args': {'num_steps': trainerConfig.train_steps},
         'eval_args': {'num_steps': trainerConfig.eval_steps},
-        'hyperparameters': tuner.outputs.best_hyperparameters if enable_tuning else None,
-        'custom_config': {'epochs': trainerConfig.epochs, 'train_batch_size': trainerConfig.train_batch_size, 'eval_batch_size': trainerConfig.eval_batch_size}
+        'hyperparameters': tuner.outputs.best_hyperparameters if tunerConfig.enable_tuning else None,
+        'custom_config': {'epochs': trainerConfig.epochs, 'train_batch_size': trainerConfig.train_batch_size,
+                          'eval_batch_size': trainerConfig.eval_batch_size}
     }
 
     if trainerConfig.ai_platform_training_args is not None:
@@ -295,16 +293,16 @@ def create_pipeline(pipeline_name: Text,
         pusher_args.update({'push_destination':
             pusher_pb2.PushDestination(
                 filesystem=pusher_pb2.PushDestination.Filesystem(
-                    base_directory=serving_model_dir))})
+                    base_directory=pusherConfig.serving_model_dir))})
 
-    if ai_platform_serving_args is not None:
+    if pusherConfig.ai_platform_serving_args is not None:
         pusher_args.update({
             'custom_executor_spec':
                 executor_spec.ExecutorClassSpec(ai_platform_pusher_executor.Executor
                                                 ),
             'custom_config': {
                 ai_platform_pusher_executor.SERVING_ARGS_KEY:
-                    ai_platform_serving_args
+                    pusherConfig.ai_platform_serving_args
             },
         })
 
@@ -324,7 +322,7 @@ def create_pipeline(pipeline_name: Text,
         pusher
     ]
 
-    if enable_tuning:
+    if tunerConfig.enable_tuning:
         components.append(tuner)
     # else:
     #  components.append(hparams_importer)
