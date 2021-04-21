@@ -106,7 +106,7 @@ def serialize_example(data, feature_2_tf_example_mapping=feature_titanic_column_
     return example_proto.SerializeToString()
 
 
-def make_tensor_proto(data, dtype, size):
+def make_tensor_proto(data, dtype, size) -> tensor_pb2.TensorProto:
     dims = [tensor_shape_pb2.TensorShapeProto.Dim(size=size)]
     tensor_shape_proto = tensor_shape_pb2.TensorShapeProto(dim=dims)
     tensor_proto = tensor_pb2.TensorProto(
@@ -116,7 +116,7 @@ def make_tensor_proto(data, dtype, size):
     return tensor_proto
 
 
-def make_tensor_proto_for_request(request_data):
+def make_tensor_proto_for_request(request_data) -> tensor_pb2.TensorProto:
     serialized_examples_array = [serialize_example(row) for row in request_data]  # array od serialized examples
     size = len(request_data)
 
@@ -139,9 +139,9 @@ def read_csv_2_dict(filepath, type_converters=converters):
 
 def read_csv_for_prediction(filepath, type_converters=converters, label_key=LABEL_KEY):
     df = pd.read_csv(filepath, converters=converters)
-    df.drop([label_key], axis=1, inplace=True)
-
-    return df.to_dict(orient='records')
+    if label_key in df.columns:
+        df.drop([label_key], axis=1, inplace=True)
+    return df
 
 
 def predict_response_to_dict(predict_response):

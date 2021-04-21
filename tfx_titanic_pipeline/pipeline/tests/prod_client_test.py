@@ -134,12 +134,8 @@ class ProdClientTest(tf.test.TestCase):
       print(prediction[first_key])
       self.assertTrue(len(prediction[first_key]) == len(train_survived_examples_data))
 
-      self.assertTrue(np.isfinite(prediction[first_key]).all(), msg='All predictions should be finite numbers, +inf, -inf, nan are prohibited.')
+      self.assertTrue(np.isfinite(prediction[first_key]).all(),
+                      msg='All predictions should be finite numbers, +inf, -inf, nan are prohibited.')
 
       self.assertAllInRange(target=prediction[first_key], lower_bound=0.0, upper_bound=1.0)
-
-
-
-
-
 
