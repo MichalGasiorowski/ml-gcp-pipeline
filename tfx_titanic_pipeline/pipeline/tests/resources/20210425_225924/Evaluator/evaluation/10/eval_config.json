@@ -1,0 +1,54 @@
+{
+  "evalConfig": {
+    "modelSpecs": [
+      {
+        "labelKey": "Survived"
+      }
+    ],
+    "slicingSpecs": [
+      {},
+      {
+        "featureKeys": [
+          "Sex"
+        ]
+      },
+      {
+        "featureKeys": [
+          "Age"
+        ]
+      },
+      {
+        "featureKeys": [
+          "Parch"
+        ]
+      }
+    ],
+    "metricsSpecs": [
+      {
+        "metrics": [
+          {
+            "className": "BinaryAccuracy",
+            "threshold": {
+              "valueThreshold": {
+                "lowerBound": 0.5,
+                "upperBound": 0.995
+              }
+            }
+          },
+          {
+            "className": "ExampleCount"
+          }
+        ],
+        "modelNames": [
+          ""
+        ]
+      }
+    ]
+  },
+  "version": "0.25.0",
+  "dataLocation": "<user provided PCollection>",
+  "fileFormat": "<unknown>",
+  "modelLocations": {
+    "": "/home/michal/artifact-store/tfx-titanic-training/20210425_225924/Trainer/model/9/serving_model_dir"
+  }
+}
