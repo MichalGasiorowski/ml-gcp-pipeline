@@ -221,7 +221,7 @@ def create_pipeline(pipeline_name: Text,
     accuracy_threshold = tfma.MetricThreshold(
         value_threshold=tfma.GenericValueThreshold(
             lower_bound={'value': 0.5},
-            upper_bound={'value': 0.99}),
+            upper_bound={'value': 0.995}),
     )
 
     metrics_specs = tfma.MetricsSpec(
@@ -237,7 +237,9 @@ def create_pipeline(pipeline_name: Text,
         metrics_specs=[metrics_specs],
         slicing_specs=[
             tfma.SlicingSpec()
-            # ,tfma.SlicingSpec(feature_keys=['Sex'])
+            ,tfma.SlicingSpec(feature_keys=['Sex'])
+            ,tfma.SlicingSpec(feature_keys=['Age'])
+            ,tfma.SlicingSpec(feature_keys=['Parch'])
         ]
     )
 
