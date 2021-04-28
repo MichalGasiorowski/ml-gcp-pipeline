@@ -70,25 +70,25 @@ class LocalRunner():
         self._setup_pipeline_parameters_from_env()
 
     def _setup_pipeline_parameters_from_env(self):
-        self.HOME = self.env_config.HOME
         self.LOCAL_LOG_DIR = self.env_config.LOCAL_LOG_DIR
         self.PIPELINE_NAME = self.env_config.PIPELINE_NAME
         self.ENABLE_CACHE = self.env_config.ENABLE_CACHE
-        self.data_root_uri = self.env_config.DATA_ROOT_URI
+        self.DATA_ROOT_URI = self.env_config.DATA_ROOT_URI
 
-        self.ARTIFACT_STORE = os.path.join(os.sep, self.HOME, 'artifact-store')
-        self.SERVING_MODEL_DIR = os.path.join(os.sep, self.HOME, 'serving_model')
-        self.PIPELINE_ROOT = os.path.join(self.ARTIFACT_STORE, self.PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
-        self.METADATA_PATH = os.path.join(self.PIPELINE_ROOT, 'tfx_metadata', self.PIPELINE_NAME, 'metadata.db')
+        # properties applicable for local run
+        self.HOME = self.env_config.HOME
+        self.LOCAL_ARTIFACT_STORE = self.env_config.LOCAL_ARTIFACT_STORE
+        self.LOCAL_SERVING_MODEL_DIR = self.env_config.LOCAL_SERVING_MODEL_DIR
+        self.LOCAL_PIPELINE_ROOT = self.env_config.LOCAL_PIPELINE_ROOT
+        self.LOCAL_METADATA_PATH = self.env_config.LOCAL_METADATA_PATH
 
         self.trainerConfig = TrainerConfig.from_config(config=self.env_config, ai_platform_training_args=None)
         self.tunerConfig = TunerConfig.from_config(config=self.env_config, ai_platform_tuner_args=None)
-        self.pusherConfig = PusherConfig.from_config(config=self.env_config,  serving_model_dir=self.SERVING_MODEL_DIR,
+        self.pusherConfig = PusherConfig.from_config(config=self.env_config,  serving_model_dir=self.LOCAL_SERVING_MODEL_DIR,
                                                      ai_platform_serving_args=None)
 
-
     def create_pipeline_root_folders_paths(self):
-        os.makedirs(self.PIPELINE_ROOT, exist_ok=True)
+        os.makedirs(self.LOCAL_PIPELINE_ROOT, exist_ok=True)
 
     def remove_folders(self, folder):
         for filename in os.listdir(folder):
@@ -112,15 +112,15 @@ class LocalRunner():
         LocalDagRunner().run(
             pipeline.create_pipeline(
                 pipeline_name=self.PIPELINE_NAME,
-                pipeline_root=self.PIPELINE_ROOT,
-                data_root_uri=self.data_root_uri,
+                pipeline_root=self.LOCAL_PIPELINE_ROOT,
+                data_root_uri=self.DATA_ROOT_URI,
                 trainerConfig=self.trainerConfig,
                 tunerConfig=self.tunerConfig,
                 pusherConfig=self.pusherConfig,
                 enable_cache=self.ENABLE_CACHE,
                 local_run=True,
                 metadata_connection_config=metadata.sqlite_metadata_connection_config(
-                    self.METADATA_PATH)))
+                    self.LOCAL_METADATA_PATH)))
         return self
 
 
@@ -129,6 +129,6 @@ if __name__ == '__main__':
     localRunner = LocalRunner()
     localRunner.create_pipeline_root_folders_paths()
 
-    logging.info("PIPELINE_ROOT=" + localRunner.PIPELINE_ROOT)
+    logging.info("LOCAL_PIPELINE_ROOT=" + localRunner.LOCAL_PIPELINE_ROOT)
 
     localRunner.run()

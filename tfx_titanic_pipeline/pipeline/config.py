@@ -17,6 +17,7 @@
 from __future__ import absolute_import
 
 import os
+import time
 
 
 class Config:
@@ -24,6 +25,7 @@ class Config:
     def __init__(self):
         """Sets configuration vars."""
         # Lab user environment resource settings
+
         self.GCP_REGION = os.getenv("GCP_REGION", "us-central1")
         self.PROJECT_ID = os.getenv("PROJECT_ID", "cloud-training-281409")
         self.ARTIFACT_STORE_URI = os.getenv("ARTIFACT_STORE_URI",
@@ -51,6 +53,13 @@ class Config:
         self.TRAIN_BATCH_SIZE = os.getenv("TRAIN_BATCH_SIZE", "64")
         self.EVAL_BATCH_SIZE = os.getenv("EVAL_BATCH_SIZE", "64")
 
+        self.LOCAL_LOG_DIR = os.getenv("LOCAL_LOG_DIR", '/tmp/logs')
 
         self.HOME = os.getenv("HOME", os.path.expanduser("~"))
-        self.LOCAL_LOG_DIR = os.getenv("LOCAL_LOG_DIR", '/tmp/logs')
+        self.LOCAL_ARTIFACT_STORE = os.path.join(os.sep, self.HOME, 'artifact-store')
+        self.LOCAL_SERVING_MODEL_DIR = os.path.join(os.sep, self.HOME, 'serving_model')
+        self.LOCAL_PIPELINE_ROOT = os.path.join(self.LOCAL_ARTIFACT_STORE, self.PIPELINE_NAME, time.strftime("%Y%m%d_%H%M%S"))
+        self.LOCAL_METADATA_PATH = os.path.join(self.LOCAL_PIPELINE_ROOT, 'tfx_metadata', self.PIPELINE_NAME, 'metadata.db')
+
+        self.USE_GS = os.getenv("USE_GS", "False")
+        self.USE_AI_PLATFORM = os.getenv("USE_AI_PLATFORM", "False")
