@@ -25,7 +25,7 @@ from distutils.util import strtobool
 
 from absl import logging
 from tfx.orchestration import metadata
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 from config import Config
 from pipeline_args import TrainerConfig
@@ -61,7 +61,7 @@ import pipelines as pipeline
 
 # DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'train')
 
-class LocalRunnerWrapper():
+class BeamDagRunnerWrapper():
     """Class for Local Runner encapsulation"""
 
     def __init__(self):
@@ -80,6 +80,16 @@ class LocalRunnerWrapper():
         self.LOCAL_SERVING_MODEL_DIR = self.env_config.LOCAL_SERVING_MODEL_DIR
         self.LOCAL_PIPELINE_ROOT = self.env_config.LOCAL_PIPELINE_ROOT
         self.LOCAL_METADATA_PATH = self.env_config.LOCAL_METADATA_PATH
+
+        self.BEAM_TMP_FOLDER = '{}/beam/tmp'.format(self.env_config.LOCAL_ARTIFACT_STORE)
+        #self.beam_pipeline_args = [
+        self.BEAM_PIPELINE_ARGS = [
+            '--runner=DirectRunner',
+            '--experiments=shuffle_mode=auto',
+            #'--project=' + self.env_config.PROJECT_ID,
+            '--temp_location=' + self.BEAM_TMP_FOLDER,
+            #'--region=' + self.env_config.GCP_REGION,
+        ]
 
         self.trainerConfig = TrainerConfig.from_config(config=self.env_config, ai_platform_training_args=None)
         self.tunerConfig = TunerConfig.from_config(config=self.env_config, ai_platform_tuner_args=None)
@@ -108,7 +118,7 @@ class LocalRunnerWrapper():
 
         """Define a local pipeline and run it."""
 
-        LocalDagRunner().run(
+        BeamDagRunner().run(
             pipeline.create_pipeline(
                 pipeline_name=self.PIPELINE_NAME,
                 pipeline_root=self.LOCAL_PIPELINE_ROOT,
@@ -119,6 +129,7 @@ class LocalRunnerWrapper():
                 runtime_parameters_config=None,
                 enable_cache=self.ENABLE_CACHE,
                 local_run=True,
+                beam_pipeline_args=self.BEAM_PIPELINE_ARGS,
                 metadata_connection_config=metadata.sqlite_metadata_connection_config(
                     self.LOCAL_METADATA_PATH)))
         return self
@@ -126,9 +137,9 @@ class LocalRunnerWrapper():
 
 if __name__ == '__main__':
     logging.set_verbosity(logging.INFO)
-    localRunner = LocalRunnerWrapper()
-    localRunner.create_pipeline_root_folders_paths()
+    beam_dag_runner = BeamDagRunnerWrapper()
+    beam_dag_runner.create_pipeline_root_folders_paths()
 
-    logging.info("LOCAL_PIPELINE_ROOT=" + localRunner.LOCAL_PIPELINE_ROOT)
+    logging.info("LOCAL_PIPELINE_ROOT=" + beam_dag_runner.LOCAL_PIPELINE_ROOT)
 
-    localRunner.run()
+    beam_dag_runner.run()

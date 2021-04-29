@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from config import Config
 from distutils.util import strtobool
 from typing import Any, Dict, List, Optional, Text
+from tfx.orchestration import data_types
 
 
 class TrainerConfig:
@@ -51,3 +52,38 @@ class PusherConfig:
     def from_config(cls, config: Config, serving_model_dir, ai_platform_serving_args):
         return cls(serving_model_dir=serving_model_dir, ai_platform_serving_args=ai_platform_serving_args)
 
+
+class RuntimeParametersConfig:
+    def __init__(self, data_root_uri: data_types.RuntimeParameter, train_steps: data_types.RuntimeParameter,
+                 tuner_steps: data_types.RuntimeParameter, eval_steps: data_types.RuntimeParameter):
+        self.data_root_uri = data_root_uri
+        self.train_steps = train_steps
+        self.tuner_steps = tuner_steps
+        self.eval_steps = eval_steps
+
+    @classmethod
+    def from_config(cls, config: Config):
+        data_root_uri = data_types.RuntimeParameter(
+            name='data-root-uri',
+            default=config.DATA_ROOT_URI,
+            ptype=Text
+        )
+
+        train_steps = data_types.RuntimeParameter(
+            name='train-steps',
+            default=int(config.TRAIN_STEPS),
+            ptype=int
+        )
+
+        tuner_steps = data_types.RuntimeParameter(
+            name='tuner-steps',
+            default=int(config.TUNER_STEPS),
+            ptype=int
+        )
+
+        eval_steps = data_types.RuntimeParameter(
+            name='eval-steps',
+            default=int(config.EVAL_STEPS),
+            ptype=int
+        )
+        return cls(data_root_uri=data_root_uri, train_steps=train_steps, tuner_steps=tuner_steps, eval_steps=eval_steps)

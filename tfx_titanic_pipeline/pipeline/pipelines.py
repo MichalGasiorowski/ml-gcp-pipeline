@@ -51,6 +51,7 @@ from tfx.types.standard_artifacts import HyperParameters
 from pipeline_args import TrainerConfig
 from pipeline_args import TunerConfig
 from pipeline_args import PusherConfig
+from pipeline_args import RuntimeParametersConfig
 
 SCHEMA_FOLDER = 'schema'
 TRANSFORM_MODULE_FILE = 'preprocessing.py'
@@ -60,13 +61,14 @@ TRAIN_MODULE_FILE = 'model.py'
 def create_pipeline(pipeline_name: Text,
                     pipeline_root: Text,
                     data_root_uri,
-                    trainerConfig: TrainerConfig,
-                    tunerConfig: TunerConfig,
-                    pusherConfig: PusherConfig,
+                    trainer_config: TrainerConfig,
+                    tuner_config: TunerConfig,
+                    pusher_config: PusherConfig,
+                    runtime_parameters_config: RuntimeParametersConfig = None,
                     local_run: bool = False,
                     beam_pipeline_args: Optional[List[Text]] = None,
                     enable_cache: Optional[bool] = True,
-                    metadata_connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
+                    metadata_connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None
                     ) -> pipeline.Pipeline:
     """Trains and deploys the Keras Titanic Classifier with TFX and Kubeflow Pipeline on Google Cloud.
   Args:
@@ -95,11 +97,11 @@ def create_pipeline(pipeline_name: Text,
     A TFX pipeline object.
   """
 
-    absl.logging.info('train_steps for training: %s' % trainerConfig.train_steps)
-    absl.logging.info('tuner_steps for tuning: %s' % tunerConfig.tuner_steps)
+    absl.logging.info('train_steps for training: %s' % trainer_config.train_steps)
+    absl.logging.info('tuner_steps for tuning: %s' % tuner_config.tuner_steps)
 
     absl.logging.info('data_root_uri for training: %s' % data_root_uri)
-    absl.logging.info('eval_steps for evaluating: %s' % trainerConfig.eval_steps)
+    absl.logging.info('eval_steps for evaluating: %s' % trainer_config.eval_steps)
 
     # Brings data into the pipeline and splits the data into training and eval splits
     output_config = example_gen_pb2.Output(
@@ -107,6 +109,10 @@ def create_pipeline(pipeline_name: Text,
             example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=4),
             example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
         ]))
+
+    data_root_uri = runtime_parameters_config.data_root_uri \
+        if runtime_parameters_config is not None \
+        else data_root_uri
 
     # examples = external_input(data_root_uri)
     examplegen = CsvExampleGen(input_base=data_root_uri, output_config=output_config)
@@ -150,21 +156,31 @@ def create_pipeline(pipeline_name: Text,
         source_uri='hyperparameters',
         artifact_type=HyperParameters)
 
-    if tunerConfig.enable_tuning:
+    train_steps = runtime_parameters_config.train_steps \
+        if runtime_parameters_config is not None \
+        else trainer_config.train_steps
+    eval_steps = runtime_parameters_config.eval_steps \
+        if runtime_parameters_config is not None \
+        else trainer_config.eval_steps
+    tuner_steps = runtime_parameters_config.tuner_steps \
+        if runtime_parameters_config is not None \
+        else tuner_config.tuner_steps
+
+    if tuner_config.enable_tuning:
         tuner_args = {
             'module_file': TRAIN_MODULE_FILE,
             'examples': transform.outputs.transformed_examples,
             'transform_graph': transform.outputs.transform_graph,
-            'train_args': {'num_steps': tunerConfig.tuner_steps},
-            'eval_args': {'num_steps': trainerConfig.eval_steps},
-            'custom_config': {'max_trials': tunerConfig.max_trials}
+            'train_args': {'num_steps': tuner_steps},
+            'eval_args': {'num_steps': eval_steps},
+            'custom_config': {'max_trials': tuner_config.max_trials}
             # 'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3),
         }
 
-        if tunerConfig.ai_platform_tuner_args is not None:
+        if tuner_config.ai_platform_tuner_args is not None:
             tuner_args.update({
                 'custom_config': {
-                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: tunerConfig.ai_platform_tuner_args
+                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: tuner_config.ai_platform_tuner_args
                 },
                 'tune_args': tuner_pb2.TuneArgs(num_parallel_trials=3)
             })
@@ -172,7 +188,7 @@ def create_pipeline(pipeline_name: Text,
         absl.logging.info("tuner_args: " + str(tuner_args))
         tuner = Tuner(**tuner_args)
 
-    hyperparameters = tuner.outputs.best_hyperparameters if tunerConfig.enable_tuning else hparams_importer.outputs['result']
+    hyperparameters = tuner.outputs.best_hyperparameters if tuner_config.enable_tuning else hparams_importer.outputs['result']
 
     # Trains the model using a user provided trainer function.
 
@@ -181,18 +197,18 @@ def create_pipeline(pipeline_name: Text,
         'transformed_examples': transform.outputs.transformed_examples,
         'schema': import_schema.outputs.result,
         'transform_graph': transform.outputs.transform_graph,
-        'train_args': {'num_steps': trainerConfig.train_steps},
-        'eval_args': {'num_steps': trainerConfig.eval_steps},
+        'train_args': {'num_steps': train_steps},
+        'eval_args': {'num_steps': eval_steps},
         #'hyperparameters': tuner.outputs.best_hyperparameters if tunerConfig.enable_tuning else None,
         'hyperparameters': hyperparameters,
-        'custom_config': {'epochs': trainerConfig.epochs, 'train_batch_size': trainerConfig.train_batch_size,
-                          'eval_batch_size': trainerConfig.eval_batch_size}
+        'custom_config': {'epochs': trainer_config.epochs, 'train_batch_size': trainer_config.train_batch_size,
+                          'eval_batch_size': trainer_config.eval_batch_size}
     }
 
-    if trainerConfig.ai_platform_training_args is not None:
+    if trainer_config.ai_platform_training_args is not None:
         trainer_args['custom_config'].update({
             ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                trainerConfig.ai_platform_training_args,
+                trainer_config.ai_platform_training_args,
         })
         trainer_args.update({
             'custom_executor_spec':
@@ -297,16 +313,16 @@ def create_pipeline(pipeline_name: Text,
         pusher_args.update({'push_destination':
             pusher_pb2.PushDestination(
                 filesystem=pusher_pb2.PushDestination.Filesystem(
-                    base_directory=pusherConfig.serving_model_dir))})
+                    base_directory=pusher_config.serving_model_dir))})
 
-    if pusherConfig.ai_platform_serving_args is not None:
+    if pusher_config.ai_platform_serving_args is not None:
         pusher_args.update({
             'custom_executor_spec':
                 executor_spec.ExecutorClassSpec(ai_platform_pusher_executor.Executor
                                                 ),
             'custom_config': {
                 ai_platform_pusher_executor.SERVING_ARGS_KEY:
-                    pusherConfig.ai_platform_serving_args
+                    pusher_config.ai_platform_serving_args
             },
         })
 
@@ -326,7 +342,7 @@ def create_pipeline(pipeline_name: Text,
         pusher
     ]
 
-    if tunerConfig.enable_tuning:
+    if tuner_config.enable_tuning:
         components.append(tuner)
     else:
         components.append(hparams_importer)

@@ -33,6 +33,7 @@ from config import Config
 from pipeline_args import TrainerConfig
 from pipeline_args import TunerConfig
 from pipeline_args import PusherConfig
+from pipeline_args import RuntimeParametersConfig
 
 # from pipeline import create_pipeline
 import pipelines as pipeline
@@ -64,7 +65,7 @@ class KubeFlowRunner():
         else:
             self.beam_tmp_folder = '{}/beam/tmp'.format(self.env_config.LOCAL_ARTIFACT_STORE)
             self.beam_pipeline_args = [
-                '--runner=DataflowRunner',
+                '--runner=DirectRunner',
                 '--experiments=shuffle_mode=auto',
                 '--project=' + self.env_config.PROJECT_ID,
                 '--temp_location=' + self.beam_tmp_folder,
@@ -111,37 +112,14 @@ class KubeFlowRunner():
         self.LOCAL_PIPELINE_ROOT = self.env_config.LOCAL_PIPELINE_ROOT
         self.LOCAL_METADATA_PATH = self.env_config.LOCAL_METADATA_PATH
 
-        # Set the default values for the pipeline runtime parameters
-        data_root_uri = data_types.RuntimeParameter(
-            name='data-root-uri',
-            default=self.DATA_ROOT_URI,
-            ptype=Text
-        )
-
-        train_steps = data_types.RuntimeParameter(
-            name='train-steps',
-            default=int(self.env_config.TRAIN_STEPS),
-            ptype=int
-        )
-
-        tuner_steps = data_types.RuntimeParameter(
-            name='tuner-steps',
-            default=int(self.env_config.TUNER_STEPS),
-            ptype=int
-        )
-
-        eval_steps = data_types.RuntimeParameter(
-            name='eval-steps',
-            default=int(self.env_config.EVAL_STEPS),
-            ptype=int
-        )
-
         self._set_additional_cloud_properties()
 
-        self.trainerConfig = TrainerConfig.from_config(config=self.env_config, ai_platform_training_args=self.ai_platform_training_args)
-        self.tunerConfig = TunerConfig.from_config(config=self.env_config, ai_platform_tuner_args=None)
-        self.pusherConfig = PusherConfig.from_config(config=self.env_config, serving_model_dir=self.LOCAL_SERVING_MODEL_DIR,
+        self.trainer_config = TrainerConfig.from_config(config=self.env_config, ai_platform_training_args=self.ai_platform_training_args)
+        self.tuner_config = TunerConfig.from_config(config=self.env_config, ai_platform_tuner_args=None)
+        self.pusher_config = PusherConfig.from_config(config=self.env_config, serving_model_dir=self.LOCAL_SERVING_MODEL_DIR,
                                                      ai_platform_serving_args=self.ai_platform_serving_args)
+        # Set the default values for the pipeline runtime parameters
+        self.runtime_parameters_config = RuntimeParametersConfig.from_config(config=self.env_config)
 
         metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
 
@@ -159,9 +137,10 @@ class KubeFlowRunner():
                 pipeline_name=self.PIPELINE_NAME,
                 pipeline_root=self.PIPELINE_ROOT,
                 data_root_uri=self.DATA_ROOT_URI,
-                trainerConfig=self.trainerConfig,
-                tunerConfig=self.tunerConfig,
-                pusherConfig=self.pusherConfig,
+                trainer_config=self.trainer_config,
+                tuner_config=self.tuner_config,
+                pusher_config=self.pusher_config,
+                runtime_parameters_config=self.runtime_parameters_config,
                 enable_cache=self.ENABLE_CACHE,
                 local_run=False,
                 beam_pipeline_args=self.beam_pipeline_args
