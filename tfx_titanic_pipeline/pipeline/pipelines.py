@@ -267,7 +267,7 @@ def create_pipeline(pipeline_name: Text,
         )
 
     validation_config = infra_validator_pb2.ValidationSpec(
-        max_loading_time_seconds=180,
+        max_loading_time_seconds=60,
         num_tries=3,
     )
 
